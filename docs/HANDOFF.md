@@ -1,25 +1,27 @@
 # Handoff: Ultima II decompilation (u2-decompiled)
 
 State as of 2026-11-09, after the second session (repository, envelope step, relocatable
-source). Read this first. The sister project `../u1-decompiled` (docs/HANDOFF.md, MAP.md,
+source, split into 19 modules). Read this first. The sister project `../u1-decompiled` (docs/HANDOFF.md, MAP.md,
 MATCHING.md) is the model for conventions.
 
 ## Headline
 
 **ULTIMAII.EXE rebuilds byte-identical as a file** (37344 bytes, sha1 6efae26c…) from
-`src/U2.ASM` with `python3 tools/build.py`: MASM 4.00 + LINK 3.05 in one DOSBox run (~15 s),
-then `tools/postlink.py` adds the envelope remains from gamedata.
+**19 modules in `src/`** (one per subsystem plus one for the data, linked in the order of
+`src/u2.lnk`) with `python3 tools/build.py`: MASM 4.00 (or MASM 3.00: `ASM=MASM3`, same file)
++ LINK 3.05 in one DOSBox run, then `tools/postlink.py` adds the envelope remains from gamedata.
 
 **The source is relocatable**: every address in it is a symbol (`Lxxxx` in CODE, `D_xxxx` in
 DATA, BSS buffers and the stack as `D_END+n`), so code and data can be inserted, removed or moved.
-`tools/shift.py` proves it statically (padding inserted at the start of the code and the data:
-every one of the 4585 symbolic lines moves by the right amount, nothing else changes), and a
-build shifted by code +17 / data +300 bytes was played in DOSBox: title, the whole
-demonstration (town, 3D dungeon, space), character generation and save, loading the save,
-world map, walking. Only one instruction is still `db` (5D31, `cmp bx,0FFFFh` in the long 81
-form, which MASM can't produce; it's a constant). `src/U2.ASM` is the source of truth, edited by
-hand. Unlike U1 there is no C at all: the whole game is hand-written 8086 assembly, so what comes
-next is splitting it into modules and the readability pass, not C matching.
+`tools/shift.py` proves it statically (padding inserted at the start of the code, or of any
+module, and of the data: every one of the 4585 symbolic lines moves by the right amount,
+nothing else changes). Shifted builds were played in DOSBox (single module: code +17 / data
++300; split: +33 bytes at the start of MAIN / data +9): title, the whole demonstration (town, 3D
+dungeon, space), character generation and save, loading the save, world map, walking, status
+screen; same behaviour as the identical build. Only one instruction is still `db` (5D31,
+`cmp bx,0FFFFh` in the long 81 form, which MASM can't produce; it's a constant). `src/` is the
+source of truth, edited by hand. Unlike U1 there is no C at all: the whole game is hand-written
+8086 assembly, so what comes next is the readability pass, not C matching.
 
 ## The executable
 
@@ -121,21 +123,58 @@ handling, which it doesn't need); switching it over is optional.
   1983) or the prefix was written explicitly. Not resolved.
 - `cmp bx,0FFFFh` at 5D31 in the long form (81 FB FF FF): MASM 3/4 always pick 83 FB FF.
 
-## How the source is laid out (gen.py's conventions)
+## How the source is laid out
 
-- An empty `CODE SEGMENT / CODE ENDS` first (keeps CODE first in the link), then the whole DATA
-  segment, then CODE. So code only refers backwards to data symbols (no forward-reference
-  surprises in MASM).
+### Modules (src/u2.lnk order; boundaries chosen with tools/cuts.py)
+
+| module | original addresses | what |
+|---|---|---|
+| START | 0100-0730 | startup (`ORG 100h`, entry `L0100`), title screen and demonstration, delay loops |
+| MAIN | 0730-0E70 | command jump table (A-Z), game start, the outdoor main loop and movement |
+| EVENTS | 0E70-154E | monster attacks and spells, darkness and torches, random events |
+| SHOPS | 154E-2028 | towns: pub (tips), temple, oracle, armour and weapon shops, transport |
+| INPUT | 2028-2290 | number and money entry, "illegal command" |
+| LOAD | 2290-2362 | loading the map, monster, talk and player files |
+| MOVE | 2362-26F9 | moving (pass, north/south/east/west), force fields, saving the player |
+| DUNGEON | 26F9-2B65 | the dungeon and tower loop: advance, turn, retreat, traps |
+| CMDAL | 2B65-3B92 | commands A-L |
+| CMDMZ | 3B92-48CD | commands M-Z; the status screen (Z) |
+| SCREEN | 48CD-4C60 | video tables (CGA segments, masks), clearing, tiles and pixels |
+| TEXTIO | 4C60-5400 | terrain names; keyboard, text output, numbers, random numbers, file I/O |
+| CHARGEN | 5400-5AB1 | character generation |
+| MAPVIEW | 5AB1-5C90 | drawing the outdoor/town map window (tile caches D_0272/D_0372) |
+| SOUND | 5C90-6000 | PC speaker sounds (D_054D = sound on/off, Ctrl-S) |
+| VIEW3D | 6000-6999 | the 3D dungeon and tower view, line drawing (67B3) |
+| SPACE | 6999-7242 | space flight: fuel, hyperwarp, planets |
+| ENDGAME | 7242-740B | the end of Minax and the end of the game |
+| U2DATA | (7410-8AC0) | the DATA segment: variables, tables, tile bitmaps |
+
+The names describe what the strings and a quick read show; the readability pass will refine
+them. Every module has 42-49 KB of MASM symbol space free.
+
+### Conventions (tools/gen.py wrote them, tools/split.py cut the result)
+
+- Each module starts `CODE SEGMENT BYTE PUBLIC / CODE ENDS` (keeps CODE first in the link), then
+  `DATA SEGMENT PARA PUBLIC` with the data EXTRNs (or, in U2DATA, the data itself), then
+  `CGROUP GROUP CODE, DATA`, then the CODE part with its EXTRNs and PUBLICs.
+  `ASSUME CS:CODE, DS:DATA`. BYTE alignment makes the CODE pieces join without gaps; LINK pads
+  the end of the code to the paragraph where DATA starts (740B-7410), as in the original.
+- Cross-module references: `EXTRN Lxxxx:NEAR` (code label), `:BYTE` (`label byte`: CS data,
+  D_ variables), `STACK_PARA:ABS`; the defining module says `PUBLIC`. An alias equate
+  (`D_0473 equ byte ptr D_0472+1`) is copied into the modules that use it.
+- **An 8-bit branch (jcc, short jmp, loop, jcxz, and MASM's forward `jmp` = EB xx 90) must not
+  cross a module boundary**: MASM has no 8-bit external reference and would make it a 3-byte
+  E9 (or refuse). tools/cuts.py lists where cuts are allowed; split.py checks it.
 - DATA: `D_START` (offset 0, must stay the first line), `D_xxxx label byte` at every offset a
   DS operand names (named after its original offset), `dw D_xxxx` for the 05B0 pointer table,
-  `dw D_END+150h` etc. for the BSS buffer pointers, `D_END` at the end. `D_0473 equ byte ptr
-  D_0472+1` is the one label inside a pointer word.
-- CODE: `C_BASE` (offset 0), `ORG 100h`, `L0100` (entry). `Lxxxx:` at branch targets,
-  `Lxxxx label byte` at CS data; a cs: operand into the middle of an instruction is `Lxxxx+n`.
-  At the end, padding to the paragraph and `C_DATA`, the data segment as seen from CS
-  (`cs:[C_DATA+(D_05B0-D_START)]`).
-- Startup: `add ax, (D_END-D_START+1A50h+15)/16` is the stack segment (data + BSS + buffers);
-  BSS buffers are D_END+150h (map), +1150h (talk), +1250h (monsters).
+  `dw D_END+150h` etc. for the BSS buffer pointers, `D_END` at the end, then
+  `STACK_PARA equ (D_END-D_START+1A50h+15)/16`, the paragraphs of data + BSS + buffers (startup:
+  `add ax, STACK_PARA` makes SS). BSS buffers are D_END+150h (map), +1150h (talk), +1250h
+  (monsters). `D_0473 equ byte ptr D_0472+1` is the one label inside a pointer word.
+- CODE: `Lxxxx:` at branch targets, `Lxxxx label byte` at CS data; a cs: operand into the
+  middle of an instruction is `Lxxxx+n`. The two cs: reads of the data (4AE7/4AF2, in SCREEN)
+  are `cs:CGROUP:D_05B0` between `ASSUME CS:CGROUP` and `ASSUME CS:CODE`: an offset relative to
+  the group, which starts with CODE, is CS-relative.
 - Operands always carry `byte ptr`/`word ptr`; every code line ends with `;@addr`, its address
   in the original (tools rely on it; keep it on lines that still correspond to the original).
 - Still numbers on purpose: 8-bit displacements, all immediates (each 16-bit one was checked:
@@ -143,14 +182,16 @@ handling, which it doesn't need); switching it over is optional.
 
 ## Toolchain
 
-- **MASM 4.00** builds it. MASM 3.00 gives the same code but runs out of memory with the
-  symbolic source (~1220 labels). MASM 4.00 has **~8 KB of symbol space left**: longer names in
-  the readability pass will not fit in one module, so split into modules first.
+- **MASM 4.00** builds it by default; **MASM 3.00** gives the identical file (`ASM=MASM3
+  python3 tools/build.py`). Before the split, MASM 3.00 ran out of memory on the single file
+  (~1220 labels) and MASM 4.00 had only ~8 KB left; now each module has 42 KB+ free.
 - MASM 4.00 quirks seen in DOSBox: a source line longer than its limit (a 1160-character `db`)
   makes it **silently drop everything after it** (no error, CODE comes out empty); writing a
   listing of some `db n dup (...)` lines makes it **exit silently without an object**. build.py
   writes no listing by default and checks that every module produced an object; shift.py checks
-  the image length.
+  the image length. split.py keeps EXTRN/PUBLIC lines to 6 names.
+- A GROUP needs a segment register assumed to it: `cs:CGROUP:x` under `ASSUME CS:CODE` is
+  error 68 "Can't reach with segment reg", hence the local `ASSUME CS:CGROUP`.
 - LINK 2.40, 3.00 and 3.05 all give the same EXE: 512-byte header, min 0000 max FFFF (same as
   the original), CS:IP 0000:0100, SS:SP 0000:0000, checksum 09DD, "Warning: no STACK segment".
 - Command lines that work in DOSBox: `LINK U2;` and `LINK @LINK.RSP` (build.py's, with /M for a
@@ -169,18 +210,20 @@ Git repo (master), working directly in `C:\Users\karl9\Downloads\Claude\u2-decom
 
 | file | what |
 |---|---|
-| `src/U2.ASM` | the game, the source of truth (generated by gen.py 2026-11-09, relocatable; edit by hand from now on) |
-| `src/u2.lnk` | link order, one module per line (just U2.ASM until the split) |
-| `tools/build.py` | assemble each module (MASM 4.00), LINK 3.05 with map, postlink, check the sha1 of the whole file; exediff on a mismatch. Output in `build/u2/`. `build.link(dir, edit)` is the reusable part |
-| `tools/shift.py` | relocation test: `shift.py [--code N] [--data M]` builds with padding inserted and checks that only addresses moved; leaves a runnable `build/shift/ULTIMAII.EXE` |
+| `src/*.ASM` | the game in 19 modules (table above), the source of truth: edit by hand |
+| `src/u2.lnk` | link order, one module per line |
+| `tools/build.py` | assemble each module (MASM 4.00, or `ASM=MASM3`), LINK 3.05 with map, postlink, check the sha1 of the whole file; exediff on a mismatch. Output in `build/u2/`. `build.link(dir, edit)` is the reusable part |
+| `tools/shift.py` | relocation test: `shift.py [--code N] [--data M] [--at MODULE]` builds with padding inserted at the start of the code (or of MODULE) and of the data, and checks that only addresses moved; leaves a runnable `build/shift/ULTIMAII.EXE` |
 | `tools/play.py` | play a build in a DOSBox window with GOG's settings (CGA, 500 cycles), using a copy of the game files under build/ (`play.py [EXE] [--dir DIR]`) |
 | `tools/postlink.py` | the envelope step (see above); also usable as a script `postlink.py BUILT ORIG` |
 | `tools/dos.py` | headless DOSBox (C: = workdir, D: = build/tc or `$TC`), shared with u1 |
 | `tools/setup.py`, `fat12.py` | toolchain unpacking (fat12 from u1) |
 | `tools/exediff.py` | header/relocation/image comparison (from u1) |
 | `tools/u2an.py` | shared analysis: recursive disassembly (inline-string calls, jump table) and operand facts (effective segment, displacement size) |
-| `tools/gen.py` | generates the relocatable source from the EXE (conventions above); instructions MASM can't reproduce or listed in the force file become `db`. Writes `U2.ins` (instruction starts) |
-| `tools/regen.py` | the loop gen -> MASM -> LINK -> compare image, adding size-mismatched lines to the force file. `regen.py [WORKDIR] [MASM4/MASM3]`, default `build/regen`; one pass reproduces `src/U2.ASM` |
+| `tools/cuts.py` | where module boundaries are allowed (no 8-bit branch across), with a map of function starts, callers, command letters and first strings |
+| `tools/split.py` | cuts a single-module source into modules with EXTRN/PUBLIC (module table inside). `gen.py ... build/U2.ASM` + `split.py build/U2.ASM` reproduce today's src/ exactly |
+| `tools/gen.py` | generates the relocatable single-module source from the EXE (conventions above); instructions MASM can't reproduce or listed in the force file become `db`. Writes `U2.ins` (instruction starts). For re-deriving pieces, never to overwrite src/ |
+| `tools/regen.py` | the loop gen -> MASM -> LINK -> compare image, adding size-mismatched lines to the force file. `regen.py [WORKDIR] [MASM4/MASM3]`, default `build/regen` |
 | `tools/U2.force` | 5D31, the one instruction MASM can't encode (seed for regen.py) |
 | `tools/rdis.py` | coverage report: code / inline data / unreached gaps, indirect branches |
 | `tools/disrange.py`, `refs.py`, `data.py`, `scan.py`, `stats.py` | disassemble ranges; find references and CS writes; data-segment map and envelope comparison; header/strings scan; call and DOS-call statistics (each takes the EXE path) |
@@ -191,7 +234,7 @@ Build and check:
 PY=../u1-decompiled/build/venv/Scripts/python.exe   # any Python 3; capstone for gen/shift/analysis tools
 $PY tools/setup.py      # once
 $PY tools/build.py      # -> "IDENTICAL to the GOG release", exit 0
-$PY tools/shift.py      # -> "OK: only addresses moved" (also try --code 291 --data 0, --code 17 --data 300)
+$PY tools/shift.py      # -> "OK: only addresses moved"; also e.g. --at TEXTIO --code 7, --code 291 --data 0
 $PY tools/play.py build/shift/ULTIMAII.EXE --dir build/play_shift   # play the shifted build
 ```
 
@@ -203,24 +246,21 @@ unreached (string tables, bitmaps, dead code). All of it is reproduced, as `db` 
 ## Next steps (in order)
 
 Done in session 2: repository, path-independent tools, post-link step with whole-file sha1
-check, relocatable source with static and runtime relocation tests. From here on: edit
-`src/U2.ASM` by hand, run `tools/build.py` after every change that should keep the file
-identical, and `tools/shift.py` after changes to how addresses are written.
+check, relocatable source with static and runtime relocation tests, split into 19 modules.
+From here on: edit `src/*.ASM` by hand, run `tools/build.py` after every change that should
+keep the file identical, and `tools/shift.py` (with `--at` the module you touched) after
+changes to how addresses are written. Moving code between modules: keep 8-bit branches
+inside one module and add the EXTRN/PUBLIC lines.
 
-1. **Split into modules** by subsystem (also needed for MASM's symbol space): title/demo
-   (0100-06xx), command loop and commands (0730 table), towns/shops/pub/oracle text,
-   dungeon/tower view, space/hyperwarp (69F0-71xx), character generation (5400-5A61),
-   print/keyboard/sound/video support (4A1C-53F8, 5C95-6000), endgame (7240-740B). Data can stay
-   in one module at first, its D_ symbols exported with `PUBLIC` and imported with `EXTRN`
-   (they are relocatable, so an include file of EQUs won't do). Each split must keep build.py identical and
-   shift.py OK. Parallel agents can each take a disjoint range (the U1 method). Watch MASM's
-   forward references across modules (EXTRN with the right type avoids NOP padding).
-2. **Readable pass**: names and comments. References: the Ultima_2_manual.pdf here, the Apple
-   II version's disassemblies/knowledge, existing U2 file-format docs (maps, monsters, PLAYER),
-   and the abedegno Exhume skills (`../underworld-exhumed-enhanced/exhume/`: readability-pass,
-   syncnames.py), as noted in U1's handoff. The CS table clusters (620D-6289: about 30 labels
-   that are offsets into one table) should become one label with `+n`.
-3. Optional: a port (the u4/u6 `port` directories are models). The speed-dependent delay
+1. **Readable pass**: names and comments, module by module (parallel agents can each take
+   modules; names that cross modules must be renamed in every module that declares or uses
+   them, so collect cross-module names first, e.g. U2DATA's 177 PUBLICs). References: the
+   Ultima_2_manual.pdf here, the Apple II version's disassemblies/knowledge, existing U2
+   file-format docs (maps, monsters, PLAYER), and the abedegno Exhume skills
+   (`../underworld-exhumed-enhanced/exhume/`: readability-pass, syncnames.py), as noted in U1's
+   handoff. The CS table clusters (620D-6289 in VIEW3D: about 30 labels that are offsets into one
+   table) should become one label with `+n`. Keep the `;@addr` tags.
+2. Optional: a port (the u4/u6 `port` directories are models). The speed-dependent delay
    loops and FCB I/O are what a port must replace.
 
 ## Loose ends / questions
@@ -232,6 +272,6 @@ identical, and `tools/shift.py` after changes to how addresses are written.
 - The envelope's encrypted 0x20E bytes were not decrypted (the per-EXE key is unknown; the
   two keys differ by 0xEF). Not needed for the rebuild.
 - shift.py can't see an address still written as a number (it looks like a constant in both
-  builds); the play test covered the main paths but not every command, towns' talk, combat or
+  builds); the play tests covered the main paths but not every command, towns' talk, combat or
   the endgame.
 - GOG's launcher text says "Ultima 1" (copy-paste in dosboxULTIMA2_single.conf). Irrelevant.

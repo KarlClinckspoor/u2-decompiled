@@ -1,2 +1,20 @@
 ; ULTIMAII.EXE link order (tools/build.py): one module per line
-U2.ASM
+START.ASM	; startup, title screen and demonstration, delay loops
+MAIN.ASM	; command jump table (A-Z), game start, the outdoor main loop and movement
+EVENTS.ASM	; monster attacks and spells, darkness and torches, random events
+SHOPS.ASM	; towns: pub (tips), temple, oracle, armour and weapon shops, transport
+INPUT.ASM	; number and money entry, "illegal command"
+LOAD.ASM	; loading the map, monster, talk and player files
+MOVE.ASM	; moving (pass, north/south/east/west), force fields, saving the player
+DUNGEON.ASM	; the dungeon and tower loop: advance, turn, retreat, traps
+CMDAL.ASM	; commands A-L (attack, board, cast, descend, enter, fire, get, ...)
+CMDMZ.ASM	; commands M-Z (magic, negate, offer, pass, quit, ready, steal, ...); status
+SCREEN.ASM	; video tables (CGA segments, masks), clearing, tiles and pixels
+TEXTIO.ASM	; terrain names; keyboard, text output, numbers, random numbers, file I/O
+CHARGEN.ASM	; character generation
+MAPVIEW.ASM	; drawing the outdoor and town map window
+SOUND.ASM	; PC speaker sounds
+VIEW3D.ASM	; the 3D dungeon and tower view, line drawing
+SPACE.ASM	; space flight: fuel, hyperwarp, planets
+ENDGAME.ASM	; the end of Minax and the end of the game
+U2DATA.ASM	; the data segment: variables, tables, tile bitmaps

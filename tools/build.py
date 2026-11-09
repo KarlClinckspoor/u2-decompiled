@@ -21,7 +21,7 @@ import dos, postlink
 
 EXE = 'ULTIMAII'
 SHA1 = '6efae26cdaedf30426d35cf935b50e5639387cec'    # GOG ULTIMAII.EXE, 37344 bytes
-MASM = 'D:\\MASM4\\MASM'
+MASM = 'D:\\%s\\MASM' % os.environ.get('ASM', 'MASM4')    # ASM=MASM3 for MASM 3.00
 LINK = 'D:\\MASM4\\LINK'
 
 
@@ -55,7 +55,8 @@ def link(out, edit=None, listing=False):
     bad = []
     for l in log.split('\n'):
         m = re.match(r'^\s*(\d+)\s+(Warning|Severe)', l)    # MASM 4: "0 Warning Errors"
-        if (m and int(m.group(1))) or re.search(
+        m3 = re.match(r'^\s*(\d+)\s+(\d+)\s*$', l)          # MASM 3: "0 0" under the headings
+        if (m and int(m.group(1))) or (m3 and int(m3.group(1)) + int(m3.group(2))) or re.search(
                 r'Error \d|error L|Unresolved|Undefined|more than once|Out of Memory', l, re.I):
             bad.append(l)
     for o in objs:

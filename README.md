@@ -8,19 +8,21 @@ to the GOG release, byte for byte.
 
 | executable | what | status |
 |---|---|---|
-| ULTIMAII.EXE | the whole game (one program) | **rebuilds identical** (37344 bytes, sha1 `6efae26c…`) from one assembly source, `src/U2.ASM`. The remains of Origin's 1989 protection envelope are copied from the original at build time (`tools/postlink.py`) |
+| ULTIMAII.EXE | the whole game (one program) | **rebuilds identical** (37344 bytes, sha1 `6efae26c…`) from 19 assembly modules in `src/`. The remains of Origin's 1989 protection envelope are copied from the original at build time (`tools/postlink.py`) |
 
 The game is hand-written 8086 assembly, a close transliteration of the Apple II 6502 code; there
 is no compiler output in it. The source was generated from the executable (`tools/gen.py`) and is
 now edited by hand. It is **relocatable**: every address is a symbol (`Lxxxx` in code, `D_xxxx`
 in data, named after their original addresses for now), so code and data can be added or moved;
-`tools/shift.py` checks this and a shifted build plays normally. One instruction is left as `db`.
-Next come splitting it into modules, then names and comments (docs/HANDOFF.md).
+`tools/shift.py` checks this and shifted builds play normally. It is split into one module per
+subsystem (title, main loop, events, shops, commands, screen, text and file I/O, character
+generation, map view, sound, 3D view, space, endgame) plus one for the data. One instruction is
+left as `db`. Next come names and comments (docs/HANDOFF.md).
 
 ## Toolchain
 
-Assembly: **MASM 4.00** (MASM 3.00 gives the same code but runs out of symbol space). Link:
-Microsoft **LINK 3.05** (2.40 and 3.00 give the same file).
+Assembly: **MASM 4.00** (MASM 3.00 gives the identical file: `ASM=MASM3`). Link: Microsoft
+**LINK 3.05** (2.40 and 3.00 give the same file).
 
 The repository contains neither the game nor the tools. Put the GOG files in `gamedata/` and the
 toolchain archives in `tools/` (MASM 3.0 floppy image under `tools/masm300/`, the
@@ -41,13 +43,14 @@ system Python refuses).
 
 ## Layout
 
-- `src/U2.ASM`: the game. One DATA segment, then one CODE segment (`ORG 100h`, entry `L0100`).
-  MASM needs CRLF line ends (.gitattributes keeps them)
-- `src/u2.lnk`: link order, one module per line (a single module for now)
+- `src/*.ASM`: the game, one module per subsystem (START has `ORG 100h` and the entry `L0100`;
+  U2DATA is the data segment). MASM needs CRLF line ends (.gitattributes keeps them)
+- `src/u2.lnk`: link order, one module per line, with what each holds
 - `tools/build.py`: assemble, link, post-link, compare; `tools/postlink.py`: the envelope step
   (works for Ultima I's ULTIMA.EXE too); `tools/dos.py`: headless DOSBox runner;
   `tools/setup.py`: toolchain
 - `tools/shift.py`: relocation test; `tools/play.py`: run a build in DOSBox
+- `tools/cuts.py`, `tools/split.py`: where modules may be cut, and the splitter that made them
 - `tools/gen.py`, `tools/regen.py`, `tools/u2an.py`: generate the relocatable source from the
   executable and iterate until it assembles identically (for re-deriving pieces; `src/` is the
   source of truth)
