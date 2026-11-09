@@ -254,7 +254,7 @@ class Gen:
             if a.kind[pc] == 1 and pc in a.insn:
                 ins = a.insn[pc]
                 if pc == 0x100:
-                    w('L0100:\tmov ax, DATA')
+                    w('L0100:\tmov ax, DATA\t;@0100')
                     pc += 3
                     continue
                 if pc == 0x105:             # add ax,0310h: paragraphs of data + BSS + buffers

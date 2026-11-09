@@ -22,11 +22,10 @@ import argparse, collections, os, re, struct, sys
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 sys.path.insert(0, HERE)
-import build, u2an
+import build, syms, u2an
 from u2an import CODE_END, CODE_LAST, DATA_SIZE
 
 TAG = re.compile(r';@([0-9A-F]{4})\s*$')
-SYMBOL = re.compile(r'\b(L[0-9A-F]{4}|D_[0-9A-F]{4}|D_END|D_START|CGROUP)\b')
 
 
 def pad(byte, n):
@@ -103,13 +102,17 @@ def main():
 
     # instructions the source writes with a symbol: each must move when its target moves (a
     # wrong base doesn't show otherwise, it just looks like a constant)
-    symbolic = {}
+    table = syms.table()
+    symbolic = {}                                       # address -> (text, symbols used)
     for stem in stems:
         for l in module_lines(stem):
             t = TAG.search(l)
             code = re.sub(r'^\w+:', '', l.split(';')[0])
-            if t and SYMBOL.search(code) and not code.strip().startswith('dw'):
-                symbolic[int(t.group(1), 16)] = code.strip()
+            used = [table[w.upper()] for w in syms.IDENT.findall(code) if w.upper() in table]
+            if 'CGROUP' in code.upper():
+                used.append(None)
+            if t and used and not code.strip().lower().startswith('dw'):
+                symbolic[int(t.group(1), 16)] = (code.strip(), used)
     moved = collections.Counter()
     bad = []
     changed = set()
@@ -158,10 +161,16 @@ def main():
                 moved[k] += 1
                 changed.add(addr)
 
-    for a2, text in sorted(symbolic.items()):
+    for a2, (text, used) in sorted(symbolic.items()):
         at2 = a2 if a2 in an.insn else a2 - 1       # "db 2Eh" + lea: the lea line is tagged +1
-        must = (N and any(int(x, 16) >= S for x in re.findall(r'\bL([0-9A-F]{4})', text))) or (
-            M and 'D_' in text) or ((PD + M) and 'CGROUP' in text)
+        must = False
+        for sym in used:
+            if sym is None:                         # cs:CGROUP:...
+                must = must or bool(PD + M)
+            elif sym.seg == 'C' and sym.addr is not None:
+                must = must or bool(N and sym.addr >= S)
+            elif sym.seg == 'D' and sym.kind != 'ABS':
+                must = must or bool(M)
         if must and at2 not in changed:
             bad.append('%04X: symbolic operand did not move: %s' % (a2, text))
     moved['(symbolic lines)'] = len(symbolic)

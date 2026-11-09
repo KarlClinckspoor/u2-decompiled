@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Build ULTIMAII.EXE from src/ with the original tools and compare it with the original.
 
-    python3 tools/build.py
+    python3 tools/build.py [--out DIR]      (default build/u2)
 
 Reads src/u2.lnk: one assembly module per line, in link order ("file [; comment]"). Each is
 assembled with MASM 4.00 (MASM 3.00 gives the same code but runs out of symbol
@@ -71,7 +71,10 @@ def link(out, edit=None, listing=False):
 
 
 def main():
-    built = link(os.path.join(ROOT, 'build', 'u2'))
+    out = os.path.join(ROOT, 'build', 'u2')
+    if '--out' in sys.argv:                      # e.g. one directory per parallel worker
+        out = os.path.abspath(sys.argv[sys.argv.index('--out') + 1])
+    built = link(out)
     orig = os.path.join(ROOT, 'gamedata', EXE + '.EXE')
     data, added, ho = postlink.postlink(open(built, 'rb').read(), open(orig, 'rb').read())
     open(built, 'wb').write(data)
