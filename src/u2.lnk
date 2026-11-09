@@ -3,7 +3,7 @@ START.ASM	; startup, title screen and demonstration, delay loops
 MAIN.ASM	; command jump table (A-Z), game start, the outdoor main loop and movement
 EVENTS.ASM	; monster attacks and spells, darkness and torches, random events
 SHOPS.ASM	; towns: pub (tips), temple, oracle, armour and weapon shops, transport
-INPUT.ASM	; number and money entry, "illegal command"
+INPUT.ASM	; number and money entry, "illegal command", monster movement
 LOAD.ASM	; loading the map, monster, talk and player files
 MOVE.ASM	; moving (pass, north/south/east/west), force fields, saving the player
 DUNGEON.ASM	; the dungeon and tower loop: advance, turn, retreat, traps

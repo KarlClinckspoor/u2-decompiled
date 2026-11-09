@@ -37,6 +37,50 @@ LIST NOLIST XLIST LALL SALL XALL CREF XCREF TFCOND SFCOND LFCOND ERR ERR1 ERR2 E
 ERRNDEF ERRB ERRNB ERRIDN ERRDIF OUT_ CODE DATA CGROUP
 '''.split())
 NAME = re.compile(r'^[A-Za-z_][A-Za-z0-9_]*$')
+LIMIT = 120                    # longest line (tools/lint.py checks the same)
+TAGGED = re.compile(r'^(.*?)(\s*;@[0-9A-F]{4}\s*)$')
+
+
+def wrap(prefix, text, width):
+    """Lines 'prefix + words' of at most width columns."""
+    lines, cur = [], ''
+    for w in text.split():
+        if cur and len((prefix + cur + ' ' + w).expandtabs(8)) > width:
+            lines.append(prefix + cur)
+            cur = w
+        else:
+            cur = cur + ' ' + w if cur else w
+    lines.append(prefix + cur)
+    return lines
+
+
+def reflow(line):
+    """A line that renaming made too long, with only its comment re-wrapped (CRLF-joined).
+    Comment lines are split at word boundaries keeping their indentation; an inline comment
+    moves to comment lines above its instruction. Code is never changed."""
+    if len(line.expandtabs(8)) <= LIMIT:
+        return line
+    m = re.match(r'^(\s*)(EXTRN|PUBLIC)\s+([^;]*)$', line, re.I)
+    if m:                                          # split the declaration over several lines
+        out, cur = [], []
+        for item in [x.strip() for x in m.group(3).split(',') if x.strip()]:
+            cand = '%s%s %s' % (m.group(1), m.group(2), ', '.join(cur + [item]))
+            if cur and len(cand.expandtabs(8)) > LIMIT:
+                out.append('%s%s %s' % (m.group(1), m.group(2), ', '.join(cur)))
+                cur = [item]
+            else:
+                cur.append(item)
+        out.append('%s%s %s' % (m.group(1), m.group(2), ', '.join(cur)))
+        return '\r\n'.join(out)
+    m = re.match(r'^(\s*;\s*)(.*)$', line)
+    if m and not TAGGED.match(line):              # a comment line
+        return '\r\n'.join(wrap(m.group(1), m.group(2), LIMIT - 2))
+    t = TAGGED.match(line)
+    body, tag = (t.group(1), t.group(2)) if t else (line, '')
+    if ';' in body:                                # code ; inline comment ;@tag
+        code, comment = body.split(';', 1)
+        return '\r\n'.join(wrap('; ', comment.strip(), LIMIT - 2) + [code.rstrip() + tag])
+    return line
 
 
 def load_maps(paths):
@@ -101,10 +145,11 @@ def main():
         path = os.path.join(syms.SRC, mod)
         text = open(path, 'rb').read().decode('latin1')
         new, n = pat.subn(lambda m: rep[m.group(1).upper()], text)
-        too_long = [l for l in new.split('\r\n') if len(l) > 132]
+        new = '\r\n'.join(reflow(l) for l in new.split('\r\n'))
+        too_long = [l for l in new.split('\r\n') if len(l.expandtabs(8)) > LIMIT]
         if too_long:
-            sys.exit('rename: nothing written: %s would get a line longer than 132 characters: %s'
-                     % (mod, too_long[0]))
+            sys.exit('rename: nothing written: %s would get a line longer than %d characters: %s'
+                     % (mod, LIMIT, too_long[0]))
         if n:
             out.append((path, new))
             total += n

@@ -17,7 +17,8 @@ in data, named after their original addresses for now), so code and data can be 
 `tools/shift.py` checks this and shifted builds play normally. It is split into one module per
 subsystem (title, main loop, events, shops, commands, screen, text and file I/O, character
 generation, map view, sound, 3D view, space, endgame) plus one for the data. One instruction is
-left as `db`. Next come names and comments (docs/HANDOFF.md).
+left as `db`. It is named and commented: an overview per module, a header per routine, real names for
+1032 symbols (docs/NAMING.md has the conventions, docs/FINDINGS.md what the code revealed).
 
 ## Toolchain
 
@@ -51,6 +52,7 @@ system Python refuses).
   `tools/setup.py`: toolchain
 - `tools/shift.py`: relocation test; `tools/play.py`: run a build in DOSBox
 - `tools/cuts.py`, `tools/split.py`: where modules may be cut, and the splitter that made them
+- `tools/syms.py`, `tools/rename.py`, `tools/lint.py`: symbol table, renaming, source checks
 - `tools/gen.py`, `tools/regen.py`, `tools/u2an.py`: generate the relocatable source from the
   executable and iterate until it assembles identically (for re-deriving pieces; `src/` is the
   source of truth)

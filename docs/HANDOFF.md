@@ -1,7 +1,8 @@
 # Handoff: Ultima II decompilation (u2-decompiled)
 
 State as of 2026-11-09, after the second session (repository, envelope step, relocatable
-source, split into 19 modules). Read this first. The sister project `../u1-decompiled` (docs/HANDOFF.md, MAP.md,
+source, split into 19 modules, names and comments). Read this first, then docs/NAMING.md
+(conventions) and docs/FINDINGS.md (what the code revealed: bugs, mechanics, patches). The sister project `../u1-decompiled` (docs/HANDOFF.md, MAP.md,
 MATCHING.md) is the model for conventions.
 
 ## Headline
@@ -21,7 +22,13 @@ dungeon, space), character generation and save, loading the save, world map, wal
 screen; same behaviour as the identical build. Only one instruction is still `db` (5D31,
 `cmp bx,0FFFFh` in the long 81 form, which MASM can't produce; it's a constant). `src/` is the
 source of truth, edited by hand. Unlike U1 there is no C at all: the whole game is hand-written
-8086 assembly, so what comes next is the readability pass, not C matching.
+8086 assembly.
+
+**Named and commented**: every module has an overview, every routine a header (what it does,
+in, out, registers), and inline comments; 1032 symbols carry real names (`PrintInline`,
+`MainLoop`, `CmdAttack`, `PlayerX`, `HitPointsHi`, `MonsterHP`, `TilePtrTbl`, ...), following
+docs/NAMING.md. 188 local branch targets keep their `Lxxxx` names on purpose (plain "next part"
+labels); `tools/syms.py` maps any name to its original address and back.
 
 ## The executable
 
@@ -45,12 +52,12 @@ At run time the program sets DS = load+0741h, SS = DS+0310h, SP = 0100h. DS memo
 | DS offset | what |
 |---|---|
 | 0000-058F | variables ("zero page" style: cursor at 2E/2F, random seed at 023F, FCB at 0245, ...) |
-| 05B0-062F | 64 pointers to the 0x42-byte records at 0630-166E (`dw D_xxxx` now; read at 4AC7, and through CS at 4AE7/4AF2) |
+| 05B0-062F | 64 pointers to the 0x42-byte records at 0630-166E (TilePtrTbl, `dw TileBmpNN`; read at 4AC7, and through CS at 4AE7/4AF2) |
 | 0630-16AF | those records, then other tables |
 | 16B0-17FF | BSS (`D_END`), not in the file |
-| 1800-27FF | map buffer (pointer D_0472, files MAPxxx, 0x1000 bytes) |
-| 2800-28FF | talk buffer (pointer D_0476, TLKxxx, 0x100) |
-| 2900-30FF | monster buffer (pointer D_0474, MONSTERS/MONxxx, 0x800) |
+| 1800-27FF | map buffer (pointer MapBufPtr, files MAPxxx, 0x1000 bytes) |
+| 2800-28FF | talk buffer (pointer TalkBufPtr, TLKxxx, 0x100) |
+| 2900-30FF | monster buffer (pointer MonsterBufPtr, MONSTERS/MONxxx, 0x800) |
 | 3100-31FF | stack (SS = DS+0310h, SP = 0100h) |
 
 Header: 512-byte header, min 0000 max FFFF, SS:SP 09FE:0064, invalid checksum (sum B98D,
@@ -133,7 +140,7 @@ handling, which it doesn't need); switching it over is optional.
 | MAIN | 0730-0E70 | command jump table (A-Z), game start, the outdoor main loop and movement |
 | EVENTS | 0E70-154E | monster attacks and spells, darkness and torches, random events |
 | SHOPS | 154E-2028 | towns: pub (tips), temple, oracle, armour and weapon shops, transport |
-| INPUT | 2028-2290 | number and money entry, "illegal command" |
+| INPUT | 2028-2290 | number and money entry, "illegal command"; monster movement (step toward/away, may it enter a tile, move) |
 | LOAD | 2290-2362 | loading the map, monster, talk and player files |
 | MOVE | 2362-26F9 | moving (pass, north/south/east/west), force fields, saving the player |
 | DUNGEON | 26F9-2B65 | the dungeon and tower loop: advance, turn, retreat, traps |
@@ -142,15 +149,14 @@ handling, which it doesn't need); switching it over is optional.
 | SCREEN | 48CD-4C60 | video tables (CGA segments, masks), clearing, tiles and pixels |
 | TEXTIO | 4C60-5400 | terrain names; keyboard, text output, numbers, random numbers, file I/O |
 | CHARGEN | 5400-5AB1 | character generation |
-| MAPVIEW | 5AB1-5C90 | drawing the outdoor/town map window (tile caches D_0272/D_0372) |
-| SOUND | 5C90-6000 | PC speaker sounds (D_054D = sound on/off, Ctrl-S) |
+| MAPVIEW | 5AB1-5C90 | drawing the outdoor/town map window (tile caches TileCache/TileCacheShown) |
+| SOUND | 5C90-6000 | PC speaker sounds (SoundOff, toggled by Ctrl-S) |
 | VIEW3D | 6000-6999 | the 3D dungeon and tower view, line drawing (67B3) |
 | SPACE | 6999-7242 | space flight: fuel, hyperwarp, planets |
 | ENDGAME | 7242-740B | the end of Minax and the end of the game |
 | U2DATA | (7410-8AC0) | the DATA segment: variables, tables, tile bitmaps |
 
-The names describe what the strings and a quick read show; the readability pass will refine
-them. Every module has 42-49 KB of MASM symbol space free.
+The module names describe what the strings and a quick read show. Every module has 42-49 KB of MASM symbol space free.
 
 ### Conventions (tools/gen.py wrote them, tools/split.py cut the result)
 
@@ -161,19 +167,21 @@ them. Every module has 42-49 KB of MASM symbol space free.
   the end of the code to the paragraph where DATA starts (740B-7410), as in the original.
 - Cross-module references: `EXTRN Lxxxx:NEAR` (code label), `:BYTE` (`label byte`: CS data,
   D_ variables), `STACK_PARA:ABS`; the defining module says `PUBLIC`. An alias equate
-  (`D_0473 equ byte ptr D_0472+1`) is copied into the modules that use it.
+  (`MapBufPtrHi equ byte ptr MapBufPtr+1`) is copied into the modules that use it.
 - **An 8-bit branch (jcc, short jmp, loop, jcxz, and MASM's forward `jmp` = EB xx 90) must not
   cross a module boundary**: MASM has no 8-bit external reference and would make it a 3-byte
   E9 (or refuse). tools/cuts.py lists where cuts are allowed; split.py checks it.
-- DATA: `D_START` (offset 0, must stay the first line), `D_xxxx label byte` at every offset a
-  DS operand names (named after its original offset), `dw D_xxxx` for the 05B0 pointer table,
+- DATA: `D_START` (offset 0, must stay the first line), `Name label byte` at every offset a
+  DS operand names (gen.py called them D_xxxx after the offset; now named, with a note each),
+  `dw TileBmpNN` for the pointer table TilePtrTbl,
   `dw D_END+150h` etc. for the BSS buffer pointers, `D_END` at the end, then
   `STACK_PARA equ (D_END-D_START+1A50h+15)/16`, the paragraphs of data + BSS + buffers (startup:
   `add ax, STACK_PARA` makes SS). BSS buffers are D_END+150h (map), +1150h (talk), +1250h
-  (monsters). `D_0473 equ byte ptr D_0472+1` is the one label inside a pointer word.
-- CODE: `Lxxxx:` at branch targets, `Lxxxx label byte` at CS data; a cs: operand into the
-  middle of an instruction is `Lxxxx+n`. The two cs: reads of the data (4AE7/4AF2, in SCREEN)
-  are `cs:CGROUP:D_05B0` between `ASSUME CS:CGROUP` and `ASSUME CS:CODE`: an offset relative to
+  (monsters). `MapBufPtrHi equ byte ptr MapBufPtr+1` is the one label inside a pointer word.
+- CODE: `Name:` at branch targets, `Name label byte` at CS data (gen.py called them Lxxxx;
+  local "next part" labels still are); a cs: operand into the middle of an instruction is
+  `Name+n`. The two cs: reads of the data (4AE7/4AF2, in SCREEN)
+  are `cs:CGROUP:TilePtrTbl` between `ASSUME CS:CGROUP` and `ASSUME CS:CODE`: an offset relative to
   the group, which starts with CODE, is CS-relative.
 - Operands always carry `byte ptr`/`word ptr`; every code line ends with `;@addr`, its address
   in the original (tools rely on it; keep it on lines that still correspond to the original).
@@ -221,7 +229,10 @@ Git repo (master), working directly in `C:\Users\karl9\Downloads\Claude\u2-decom
 | `tools/exediff.py` | header/relocation/image comparison (from u1) |
 | `tools/u2an.py` | shared analysis: recursive disassembly (inline-string calls, jump table) and operand facts (effective segment, displacement size) |
 | `tools/cuts.py` | where module boundaries are allowed (no 8-bit branch across), with a map of function starts, callers, command letters and first strings |
-| `tools/split.py` | cuts a single-module source into modules with EXTRN/PUBLIC (module table inside). `gen.py ... build/U2.ASM` + `split.py build/U2.ASM` reproduce today's src/ exactly |
+| `tools/split.py` | cuts a single-module source into modules with EXTRN/PUBLIC (module table inside); it made src/ from gen.py's output (before the names and comments) |
+| `tools/syms.py` | symbol table worked out from the source: `syms.py NAME|ADDR` looks up, `--refs NAME` lists uses; also a module for the other tools |
+| `tools/rename.py` | renames symbols in all modules at once from a map (`OLD NEW` lines), checking MASM's rules; re-wraps comments and EXTRN/PUBLIC lines that get too long |
+| `tools/lint.py` | CRLF line ends, line length, `;@` tags; `--code-unchanged REV` proves only comments changed |
 | `tools/gen.py` | generates the relocatable single-module source from the EXE (conventions above); instructions MASM can't reproduce or listed in the force file become `db`. Writes `U2.ins` (instruction starts). For re-deriving pieces, never to overwrite src/ |
 | `tools/regen.py` | the loop gen -> MASM -> LINK -> compare image, adding size-mismatched lines to the force file. `regen.py [WORKDIR] [MASM4/MASM3]`, default `build/regen` |
 | `tools/U2.force` | 5D31, the one instruction MASM can't encode (seed for regen.py) |
@@ -246,21 +257,21 @@ unreached (string tables, bitmaps, dead code). All of it is reproduced, as `db` 
 ## Next steps (in order)
 
 Done in session 2: repository, path-independent tools, post-link step with whole-file sha1
-check, relocatable source with static and runtime relocation tests, split into 19 modules.
-From here on: edit `src/*.ASM` by hand, run `tools/build.py` after every change that should
-keep the file identical, and `tools/shift.py` (with `--at` the module you touched) after
-changes to how addresses are written. Moving code between modules: keep 8-bit branches
+check, relocatable source with static and runtime relocation tests, split into 19 modules,
+names and comments (eight parallel agents commented disjoint modules and proposed names; the
+proposals were merged and applied in one rename). From here on: edit `src/*.ASM` by hand, run
+`tools/lint.py` and `tools/build.py` after every change that should keep the file identical, and
+`tools/shift.py` (with `--at` the module you touched) after changes to how addresses are
+written. Rename only with `tools/rename.py`. Moving code between modules: keep 8-bit branches
 inside one module and add the EXTRN/PUBLIC lines.
 
-1. **Readable pass**: names and comments, module by module (parallel agents can each take
-   modules; names that cross modules must be renamed in every module that declares or uses
-   them, so collect cross-module names first, e.g. U2DATA's 177 PUBLICs). References: the
-   Ultima_2_manual.pdf here, the Apple II version's disassemblies/knowledge, existing U2
-   file-format docs (maps, monsters, PLAYER), and the abedegno Exhume skills
-   (`../underworld-exhumed-enhanced/exhume/`: readability-pass, syncnames.py), as noted in U1's
-   handoff. The CS table clusters (620D-6289 in VIEW3D: about 30 labels that are offsets into one
-   table) should become one label with `+n`. Keep the `;@addr` tags.
-2. Optional: a port (the u4/u6 `port` directories are models). The speed-dependent delay
+1. **Finish the readable pass**: VIEW3D's ~27 labels into one coordinate table (L6217 etc.)
+   should become `ViewCoordTbl+n` operands (byte-identical; check with build.py and shift.py);
+   the creatures behind the monster tiles and the other open questions in docs/FINDINGS.md
+   (play the game to settle them); name the remaining `Lxxxx` labels where a name helps;
+   check the comments against play where they say "?".
+2. Try the findings in play (the Ctrl-Right speed bug, the Ready/Wear BCD limits, ...).
+3. Optional: a port (the u4/u6 `port` directories are models). The speed-dependent delay
    loops and FCB I/O are what a port must replace.
 
 ## Loose ends / questions

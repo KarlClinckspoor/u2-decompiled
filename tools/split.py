@@ -7,8 +7,9 @@ Works on the text of a single-module source as gen.py lays it out, not on the ex
 edits made by hand survive. src/ was made with
     python3 tools/gen.py gamedata/ULTIMAII.EXE build/U2.ASM tools/U2.force
     python3 tools/split.py build/U2.ASM
-and these two commands still reproduce it exactly (until src/ is edited). Code lines go to the module whose range holds their ;@ address (lines
-without a tag, such as labels and ASSUMEs, go with the next tagged line); a db line that
+(src/ has been edited since: names and comments).
+
+Code lines go to the module whose range holds their ;@ address (lines without a tag, such as labels and ASSUMEs, go with the next tagged line); a db line that
 straddles a boundary is cut in two. Every symbol a module uses but doesn't define becomes an
 EXTRN there (NEAR for `X:` labels, BYTE for `X label byte`, ABS for absolute equates) and a
 PUBLIC where it is defined; an alias equate (`X equ byte ptr Y+1`) is copied into the modules
@@ -28,7 +29,7 @@ MODULES = [
     ('MAIN',    0x0730, 'command jump table (A-Z), game start, the outdoor main loop and movement'),
     ('EVENTS',  0x0E70, 'monster attacks and spells, darkness and torches, random events'),
     ('SHOPS',   0x154E, 'towns: pub (tips), temple, oracle, armour and weapon shops, transport'),
-    ('INPUT',   0x2028, 'number and money entry, "illegal command"'),
+    ('INPUT',   0x2028, 'number and money entry, "illegal command", monster movement'),
     ('LOAD',    0x2290, 'loading the map, monster, talk and player files'),
     ('MOVE',    0x2362, 'moving (pass, north/south/east/west), force fields, saving the player'),
     ('DUNGEON', 0x26F9, 'the dungeon and tower loop: advance, turn, retreat, traps'),

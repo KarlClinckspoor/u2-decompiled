@@ -3,141 +3,141 @@
 ;
 ; The per-location files are named <kind><letter><zone><type>, e.g. MAPX03, MONX11, TLKX21:
 ;   letter = 'X' on Earth, 'G' on the other planets (SPACE 720B patches the three letter bytes
-;            L22BA/L22CC/L22F7 here in CS),
-;   zone   = D_0049 as an ASCII digit (time zone on Earth, planet number elsewhere),
-;   type   = D_004A as an ASCII digit (0 surface, 1 village, 2 towne, 3 castle, 4 tower,
+;            FcbMapLetter/FcbMonLetter/FcbTlkLetter here in CS),
+;   zone   = TimeZone as an ASCII digit (time zone on Earth, planet number elsewhere),
+;   type   = MapType as an ASCII digit (0 surface, 1 village, 2 towne, 3 castle, 4 tower,
 ;            5 dungeon; set by Enter in CMDAL 33C3).
-; The digits are patched into the inline file names right before each call L52CA (self-modifying).
+; The digits are patched into the inline file names right before each call ReadWriteFile (self-modifying).
 ; Entry points:
-;   L2290 load MAPxzt (map buffer, 1000h bytes) and MONxzt (monster table D_0137, 100h bytes)
-;   L22D5 load TLKxzt (talk buffer, 100h bytes)
-;   L22FD save the game: MAPXzt, MONXzt and PLAYER (player record D_0036, 100h bytes); Earth only
-; L52CA takes AH = FCB function (27h random block read, 28h random block write), CX = byte count
+;   LoadMapAndMonsters load MAPxzt (map buffer, 1000h bytes) and MONxzt (monster table MonsterX, 100h bytes)
+;   LoadTalkFile load TLKxzt (talk buffer, 100h bytes)
+;   SaveGame save the game: MAPXzt, MONXzt and PLAYER (player record PlayerRecord, 100h bytes); Earth only
+; ReadWriteFile takes AH = FCB function (27h random block read, 28h random block write), CX = byte count
 ; (record size 1), DX = buffer; it saves and restores all registers, so AH/CX carry over between
 ; consecutive calls.
 CODE SEGMENT BYTE PUBLIC
 CODE ENDS
 DATA SEGMENT PARA PUBLIC
-	EXTRN D_0000:BYTE, D_0001:BYTE, D_0036:BYTE, D_0049:BYTE, D_004A:BYTE, D_005A:BYTE
-	EXTRN D_005B:BYTE, D_006D:BYTE, D_0137:BYTE, D_0472:BYTE, D_0476:BYTE
+	EXTRN PlayerX:BYTE, PlayerY:BYTE, PlayerRecord:BYTE, TimeZone:BYTE, MapType:BYTE, SurfaceX:BYTE
+	EXTRN SurfaceY:BYTE, Planet:BYTE, MonsterX:BYTE, MapBufPtr:BYTE, TalkBufPtr:BYTE
 DATA ENDS
 CGROUP GROUP CODE, DATA	; for the cs: reads of DATA
 
 CODE SEGMENT BYTE PUBLIC
-	EXTRN L4F4D:NEAR, L52CA:NEAR
-	PUBLIC L2290, L22BA, L22CC, L22D5, L22F7, L22FD
+	EXTRN ReadKey:NEAR, ReadWriteFile:NEAR
+	PUBLIC LoadMapAndMonsters, FcbMapLetter, FcbMonLetter, LoadTalkFile, FcbTlkLetter, SaveGame
 ASSUME CS:CODE, DS:DATA
 
 ;------------------------------------------------------------------------------
-; L2290: load the map and monsters of the current location: MAP<l><zone><type>
-; (1000h bytes into the map buffer at D_0472) and MON<l><zone><type> (100h bytes
-; into the monster table D_0137..D_0236), zone = D_0049, type = D_004A. Then one
-; poll of the keyboard (L4F4D) to throw away a pending key.
-; In: D_0049, D_004A, letter byte at L22BA/L22CC. Out: map and monsters loaded.
-; Uses: AX, CX, DX (L52CA keeps the rest). L52CA asks for the disk until it can open the file.
+; LoadMapAndMonsters: load the map and monsters of the current location: MAP<l><zone><type>
+; (1000h bytes into the map buffer at MapBufPtr) and MON<l><zone><type> (100h bytes
+; into the monster table MonsterX..D_0236), zone = TimeZone, type = MapType. Then one
+; poll of the keyboard (ReadKey) to throw away a pending key.
+; In: TimeZone, MapType, letter byte at FcbMapLetter/FcbMonLetter. Out: map and monsters loaded.
+; Uses: AX, CX, DX (ReadWriteFile keeps the rest). ReadWriteFile asks for the disk until it can open the file.
 ;------------------------------------------------------------------------------
-L2290:	clc	;@2290
-	mov al, byte ptr D_0049	;@2291
+LoadMapAndMonsters:	clc	;@2290
+	mov al, byte ptr TimeZone	;@2291
 	adc al, 30h	; zone -> ASCII digit	;@2294
-	mov byte ptr cs:L22BB, al	; patch "MAPxZ.." (self-modifying)	;@2296
-	mov byte ptr cs:L22CD, al	; patch "MONxZ.."	;@229A
-	mov al, byte ptr D_004A	;@229E
+	mov byte ptr cs:FcbMapZone, al	; patch "MAPxZ.." (self-modifying)	;@2296
+	mov byte ptr cs:FcbMonZone, al	; patch "MONxZ.."	;@229A
+	mov al, byte ptr MapType	;@229E
 	adc al, 30h	; location type -> ASCII digit	;@22A1
-	mov byte ptr cs:L22BC, al	; patch "MAPxzT."	;@22A3
-	mov byte ptr cs:L22CE, al	; patch "MONxzT."	;@22A7
+	mov byte ptr cs:FcbMapType, al	; patch "MAPxzT."	;@22A3
+	mov byte ptr cs:FcbMonType, al	; patch "MONxzT."	;@22A7
 	mov ah, 27h	; FCB random block read	;@22AB
 	mov cx, 1000h	; 64x64 map	;@22AD
-	mov dx, word ptr D_0472	; map buffer	;@22B0
-	call L52CA	;@22B4
+	mov dx, word ptr MapBufPtr	; map buffer	;@22B0
+	call ReadWriteFile	;@22B4
 	db 4Dh,41h,50h	; "MAP"	;@22B7
-L22BA label byte
+FcbMapLetter label byte
 	db 58h	; 'X' or 'G' (patched by SPACE 720B)	;@22BA
-L22BB label byte
+FcbMapZone label byte
 	db 46h	; zone digit (patched)	;@22BB
-L22BC label byte
+FcbMapType label byte
 	db 46h,20h,20h	; type digit (patched), 2 spaces	;@22BC
 	mov cx, 100h	; AH is still 27h	;@22BF
-	lea dx, D_0137	; monster table	;@22C2
-	call L52CA	;@22C6
+	lea dx, MonsterX	; monster table	;@22C2
+	call ReadWriteFile	;@22C6
 	db 4Dh,4Fh,4Eh	; "MON"	;@22C9
-L22CC label byte
+FcbMonLetter label byte
 	db 58h	; 'X' or 'G' (patched by SPACE 720B)	;@22CC
-L22CD label byte
+FcbMonZone label byte
 	db 46h	; zone digit (patched)	;@22CD
-L22CE label byte
+FcbMonType label byte
 	db 46h,20h,20h	; type digit (patched), 2 spaces	;@22CE
-	call L4F4D	; poll the keyboard: drops one waiting key	;@22D1
+	call ReadKey	; poll the keyboard: drops one waiting key	;@22D1
 	ret	;@22D4
 
 ;------------------------------------------------------------------------------
-; L22D5: load the talk file TLK<l><zone><type> (100h bytes) into the talk buffer
-; at D_0476. Called after L2290 when entering a village, towne or castle.
-; In: D_0049, D_004A, letter at L22F7. Uses: AX, CX, DX.
+; LoadTalkFile: load the talk file TLK<l><zone><type> (100h bytes) into the talk buffer
+; at TalkBufPtr. Called after LoadMapAndMonsters when entering a village, towne or castle.
+; In: TimeZone, MapType, letter at FcbTlkLetter. Uses: AX, CX, DX.
 ;------------------------------------------------------------------------------
-L22D5:	clc	;@22D5
-	mov al, byte ptr D_0049	;@22D6
+LoadTalkFile:	clc	;@22D5
+	mov al, byte ptr TimeZone	;@22D6
 	adc al, 30h	;@22D9
-	mov byte ptr cs:L22F8, al	; patch the zone digit (self-modifying)	;@22DB
-	mov al, byte ptr D_004A	;@22DF
+	mov byte ptr cs:FcbTlkZone, al	; patch the zone digit (self-modifying)	;@22DB
+	mov al, byte ptr MapType	;@22DF
 	adc al, 30h	;@22E2
-	mov byte ptr cs:L22F9, al	; patch the type digit	;@22E4
+	mov byte ptr cs:FcbTlkType, al	; patch the type digit	;@22E4
 	mov ah, 27h	; FCB random block read	;@22E8
 	mov cx, 100h	;@22EA
-	mov dx, word ptr D_0476	; talk buffer	;@22ED
-	call L52CA	;@22F1
+	mov dx, word ptr TalkBufPtr	; talk buffer	;@22ED
+	call ReadWriteFile	;@22F1
 	db 54h,4Ch,4Bh	; "TLK"	;@22F4
-L22F7 label byte
+FcbTlkLetter label byte
 	db 58h	; 'X' or 'G' (patched by SPACE 720B)	;@22F7
-L22F8 label byte
+FcbTlkZone label byte
 	db 46h	; zone digit (patched)	;@22F8
-L22F9 label byte
+FcbTlkType label byte
 	db 46h,20h,20h	; type digit (patched), 2 spaces	;@22F9
 	ret	;@22FC
 
 ;------------------------------------------------------------------------------
-; L22FD: save the game, on Earth only (D_006D = 0; elsewhere it returns at once).
-; Remembers the current position as the surface position D_005A/D_005B, then
+; SaveGame: save the game, on Earth only (Planet = 0; elsewhere it returns at once).
+; Remembers the current position as the surface position SurfaceX/SurfaceY, then
 ; writes MAPX<zone><type> (1000h), MONX<zone><type> (100h, monster table) and
-; PLAYER (100h, player record from D_0036). The letter is a fixed 'X' here.
+; PLAYER (100h, player record from PlayerRecord). The letter is a fixed 'X' here.
 ; Called before entering a location, before a time door and by Q)uit.
-; In: D_0049, D_004A, D_0000/D_0001. Uses: AX, CX, DX.
+; In: TimeZone, MapType, PlayerX/PlayerY. Uses: AX, CX, DX.
 ;------------------------------------------------------------------------------
-L22FD:	mov al, byte ptr D_006D	; planet: 0 = Earth	;@22FD
+SaveGame:	mov al, byte ptr Planet	; planet: 0 = Earth	;@22FD
 	or al, al	;@2300
-	je L2305	;@2302
+	je SaveGame_Write	;@2302
 	ret	;@2304
-L2305:	clc	;@2305
-	mov al, byte ptr D_0049	;@2306
+SaveGame_Write:	clc	;@2305
+	mov al, byte ptr TimeZone	;@2306
 	adc al, 30h	;@2309
-	mov byte ptr cs:L233C, al	; patch the zone digits (self-modifying)	;@230B
-	mov byte ptr cs:L234E, al	;@230F
-	mov al, byte ptr D_004A	;@2313
+	mov byte ptr cs:FcbSaveMapZone, al	; patch the zone digits (self-modifying)	;@230B
+	mov byte ptr cs:FcbSaveMonZone, al	;@230F
+	mov al, byte ptr MapType	;@2313
 	adc al, 30h	;@2316
-	mov byte ptr cs:L233D, al	; patch the type digits	;@2318
-	mov byte ptr cs:L234F, al	;@231C
-	mov al, byte ptr D_0000	; position -> surface position	;@2320
-	mov byte ptr D_005A, al	;@2323
-	mov al, byte ptr D_0001	;@2326
-	mov byte ptr D_005B, al	;@2329
+	mov byte ptr cs:FcbSaveMapType, al	; patch the type digits	;@2318
+	mov byte ptr cs:FcbSaveMonType, al	;@231C
+	mov al, byte ptr PlayerX	; position -> surface position	;@2320
+	mov byte ptr SurfaceX, al	;@2323
+	mov al, byte ptr PlayerY	;@2326
+	mov byte ptr SurfaceY, al	;@2329
 	mov ah, 28h	; FCB random block write	;@232C
 	mov cx, 1000h	;@232E
-	mov dx, word ptr D_0472	; map buffer	;@2331
-	call L52CA	;@2335
+	mov dx, word ptr MapBufPtr	; map buffer	;@2331
+	call ReadWriteFile	;@2335
 	db 4Dh,41h,50h,58h	; "MAPX"	;@2338
-L233C label byte
+FcbSaveMapZone label byte
 	db 46h	; zone digit (patched)	;@233C
-L233D label byte
+FcbSaveMapType label byte
 	db 46h,20h,20h	; type digit (patched), 2 spaces	;@233D
 	mov cx, 100h	; AH is still 28h	;@2340
-	lea dx, D_0137	; monster table	;@2343
-	call L52CA	;@2347
+	lea dx, MonsterX	; monster table	;@2343
+	call ReadWriteFile	;@2347
 	db 4Dh,4Fh,4Eh,58h	; "MONX"	;@234A
-L234E label byte
+FcbSaveMonZone label byte
 	db 46h	; zone digit (patched)	;@234E
-L234F label byte
+FcbSaveMonType label byte
 	db 46h,20h,20h	; type digit (patched), 2 spaces	;@234F
-	lea dx, D_0036	; player record; AH = 28h, CX = 100h still	;@2352
-	call L52CA	;@2356
+	lea dx, PlayerRecord	; player record; AH = 28h, CX = 100h still	;@2352
+	call ReadWriteFile	;@2356
 	db 50h,4Ch,41h,59h,45h,52h,20h,20h	; "PLAYER  "	;@2359
 	ret	;@2361
 CODE ENDS
