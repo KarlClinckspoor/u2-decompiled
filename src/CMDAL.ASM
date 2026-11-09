@@ -172,7 +172,7 @@ Attack_MinaxFlees:	call InvertViewArea	; invert the screen	;@2C38
 	db 8Dh,53h,48h,45h,27h,53h,20h,47h,4Fh,4Eh,45h,21h,21h,21h,0h	;@2C92
 	jmp EndCommand	;@2CA1
 ; Monster killed (outdoors / in a town): put back the tile under it, then special loot
-; by its tile: 40h Minax, 60h, FCh, F0h, F8h (which monsters these are is not known).
+; by its tile: 40h Minax, 60h guard, FCh thief, F0h fighter, F8h wizard.
 Attack_Killed:	mov al, byte ptr MonsterX[di]	;@2CA4
 	mov byte ptr LookX, al	;@2CA8
 	mov al, byte ptr MonsterY[di]	;@2CAB
@@ -195,7 +195,7 @@ L2CD3:	nop	;@2CD3
 	clc	;@2CD8
 	mov al, byte ptr Keys	;@2CD9
 	adc al, 2	;@2CDC
-	daa	; tile 60h: Keys + 2 (BCD)	;@2CDE
+	daa	; a guard (tile 60h): Keys + 2 (BCD)	;@2CDE
 	mov byte ptr Keys, al	;@2CDF
 	jmp Attack_ClearMonster	;@2CE2
 L2CE5:	cmp al, 0FCh	;@2CE5

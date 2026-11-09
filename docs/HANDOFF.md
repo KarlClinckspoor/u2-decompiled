@@ -223,6 +223,7 @@ Git repo (master), working directly in `C:\Users\karl9\Downloads\Claude\u2-decom
 | `tools/build.py` | assemble each module (MASM 4.00, or `ASM=MASM3`), LINK 3.05 with map, postlink, check the sha1 of the whole file; exediff on a mismatch. Output in `build/u2/`. `build.link(dir, edit)` is the reusable part |
 | `tools/shift.py` | relocation test: `shift.py [--code N] [--data M] [--at MODULE]` builds with padding inserted at the start of the code (or of MODULE) and of the data, and checks that only addresses moved; leaves a runnable `build/shift/ULTIMAII.EXE` |
 | `tools/play.py` | play a build in a DOSBox window with GOG's settings (CGA, 500 cycles), using a copy of the game files under build/ (`play.py [EXE] [--dir DIR]`) |
+| `tools/sprites.py` | draws the 64 map tiles (from src/U2DATA.ASM) and the dungeon monster shapes (from gamedata/MONSTERS) to `build/sprites/*.png`, with the identified names in its docstring |
 | `tools/postlink.py` | the envelope step (see above); also usable as a script `postlink.py BUILT ORIG` |
 | `tools/dos.py` | headless DOSBox (C: = workdir, D: = build/tc or `$TC`), shared with u1 |
 | `tools/setup.py`, `fat12.py` | toolchain unpacking (fat12 from u1) |
@@ -265,12 +266,17 @@ proposals were merged and applied in one rename). From here on: edit `src/*.ASM`
 written. Rename only with `tools/rename.py`. Moving code between modules: keep 8-bit branches
 inside one module and add the EXTRN/PUBLIC lines.
 
-1. **Finish the readable pass**: (done: VIEW3D's coordinate table is 16 named rows, ViewXL ...
-   ViewChestTopY, read as `ViewXL[di+2]` where the code looks d+2 deep; no Lxxxx label points
-   into it any more.) Left: the creatures behind the monster tiles and the other open questions in docs/FINDINGS.md
-   (play the game to settle them); name the remaining `Lxxxx` labels where a name helps;
-   check the comments against play where they say "?".
-2. Try the findings in play (the Ctrl-Right speed bug, the Ready/Wear BCD limits, ...).
+1. **Finish the readable pass**. Done: VIEW3D's coordinate table is 16 named rows (ViewXL ...
+   ViewChestTopY, read as `ViewXL[di+2]`); every monster tile and dungeon kind is identified
+   (docs/FINDINGS.md, "Who the monsters are"; `tools/sprites.py` draws them). Left: the few
+   open questions at the end of FINDINGS; name the remaining 161 `Lxxxx` labels where a name
+   helps; check the comments against play where they say "?".
+2. Try the findings in play. Done in DOSBox: the Ctrl-Right hang, the character-generation race
+   bug, the pub's fixed tip, the Ready BCD limit, the class/race bonuses. Left: Wear's limit,
+   Unlock only sideways, Steal's alarm, Magic Missile's extra point, the ladder spells (these
+   need keys, armour or a dungeon). Test trick: a character can be placed anywhere by editing
+   SurfaceX/SurfaceY (bytes 24h/25h) of the PLAYER file in the play directory, never in gamedata/.
+   The game empties the keyboard buffer on every key: send keys about 0.8 s apart.
 3. Optional: a port (the u4/u6 `port` directories are models). The speed-dependent delay
    loops and FCB I/O are what a port must replace.
 

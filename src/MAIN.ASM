@@ -442,7 +442,7 @@ L0A66:	cmp al, 5	;@0A66
 ; OutdoorMonsters: the outdoor monsters' turn: monster slots 1Fh down to 1 (slot 0 is
 ; never used here). Free slots (MonsterTile = 0) are skipped. On horseback
 ; (PlayerTile = 22h) on the half-turns where LightTurns is negative, all but the fast
-; monsters (map codes 48h, 3Ch, 2Ch) skip their move. Then SpawnMonster may spawn a
+; monsters (map codes 48h pirate ship, 3Ch balron, 2Ch sea serpent) skip their move. Then SpawnMonster may spawn a
 ; new monster.
 ;------------------------------------------------------------------------------
 OutdoorMonsters:	nop	;@0A6D
@@ -475,9 +475,9 @@ OutdoorMonsters_Next:	dec di	; next monster (also entered from INPUT 2196/2272)	
 ;------------------------------------------------------------------------------
 ; MonsterTurn: one monster's turn (also entered from EVENTS 1083 for town monsters).
 ; In: DI = monster slot. Within 2 squares (raw difference, no wrap) and with a
-; 1 in 8 chance it casts by type (map code): 34h "LEGS PARALYZED!" (SpellParalyzeLegs),
-; 38h "ARMS PARALYZED!" (SpellParalyzeArms), 0F8h "MAGIC MISSILE!" (SpellMagicMissile), 3Ch "SLEEP
-; SPELL!" (SpellSleep). Then it steps one square towards the player (away from him
+; 1 in 8 chance it casts by type (map code): 34h daemon "LEGS PARALYZED!" (SpellParalyzeLegs),
+; 38h devil "ARMS PARALYZED!" (SpellParalyzeArms), 0F8h wizard "MAGIC MISSILE!" (SpellMagicMissile),
+; 3Ch balron "SLEEP SPELL!" (SpellSleep). Then it steps one square towards the player (away from him
 ; when its hit points MonsterHP are below 0Fh): if that square is the player's it
 ; attacks (MonsterAttack), else MonsterStepToward (INPUT) moves it, which ends with jmp OutdoorMonsters_Next.
 ; Uses: DeltaX/DeltaY (deltas), Temp29 (slot), AmountHi.

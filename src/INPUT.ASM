@@ -216,7 +216,7 @@ L2195:	nop	;@2195
 ;------------------------------------------------------------------------------
 ; MonsterCanEnter: may monster DI enter the tile AL at LookX/LookY?
 ; No monster moves while time is negated (TimeStopTurns). Monster tiles 2Ch and 48h
-; (sea monsters; 48h is the frigate's tile) only move on water. Other monsters
+; (the sea serpent, and the pirate ship drawn with the frigate's tile) only move on water. Other monsters
 ; below tile 78h may cross force fields (5Ch). Otherwise: not water, marsh or
 ; mountains; yes on grass and woods (below 14h) and town floor (70h). In towns
 ; the row and column 0 are closed.

@@ -179,8 +179,9 @@ ReadKey_Check:	pop ax	;@4F76
 	jmp ReadKey_Done	;@4F82
 ReadKey_NotCtrlS:	cmp al, 0	;@4F85
 	jne ReadKey_Got		; ordinary key	;@4F87
-; Ctrl-Right: faster (smaller delays). Probably a bug: from the start value 00FFh
-; (set by SetDefaultSpeed) the subtraction wraps to FEFFh, which passes the unsigned check.
+; Ctrl-Right: faster (smaller delays). BUG: from the start value 00FFh (set by
+; SetDefaultSpeed) the subtraction wraps to FEFFh, which passes the unsigned check, and
+; CalcDelayTbl's div then overflows. In DOSBox the game hangs (checked in play).
 	cmp ax, 7400h	;@4F89
 	jne ReadKey_CtrlLeft	;@4F8C
 	mov ax, word ptr SpeedSetting	;@4F8E

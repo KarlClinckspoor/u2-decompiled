@@ -19,7 +19,9 @@
 ; under it or, in dungeons, its level; MonsterMood behaviour, MonsterStepX/MonsterStepY wander step), hit points
 ; HitPointsHi/HitPointsLo and food FoodHi-FoodFrac (BCD), the paralysis/sleep counters LegsParalyzed-SleepTurns.
 ; A dungeon or tower is 16 levels of 16x16 cells, one 256-byte page each in the map buffer;
-; a cell's high nibble is the feature (80h = wall), its low 3 bits the monster kind (1-7).
+; a cell's high nibble is the feature (80h = wall), its low 3 bits the monster kind (1-7):
+; 1 orc, 2 ghost, 3 carrion creeper, 4 viper, 5 gremlin, 6 minotaur, 7 balron (the shapes are
+; pages 1-7 of the MONSTERS file; tools/sprites.py draws them).
 ; BCD arithmetic uses the 6502 idiom stc/cmc + sbb + das + cmc: CF=1 afterwards = no borrow.
 CODE SEGMENT BYTE PUBLIC
 CODE ENDS
@@ -616,7 +618,7 @@ DgnAttack_Hit:	nop	;@1367
 	jmp PlayerDies	; the player is dead	;@13A4
 L13A7:	nop	;@13A7
 	jmp DungeonTurn_Next	;@13A8
-; Kind 2: puts out the torch.
+; Kind 2, the ghost: puts out the torch.
 DgnAttack_BlowTorch:	mov al, byte ptr LightTurns	; torch turns left	;@13AB
 	or al, al	;@13AE
 	je L13D7	;@13B0
@@ -642,7 +644,7 @@ DgnAttack_Gremlin:	call PrintInline	;@13DA
 	jae L140D	; below zero	;@1408
 	jmp DungeonTurn_Next	;@140A
 L140D:	jmp PlayerDies	; the player is dead (a gremlin can kill you)	;@140D
-; Kind 7: sleep for 0-7 turns, no save.
+; Kind 7, the balron: sleep for 0-7 turns, no save.
 DgnAttack_StrongMagic:	nop	;@1410
 	call PrintInline	;@1411
 	db 59h,4Fh,55h,20h,46h,45h,45h,4Ch,20h,41h,20h,53h,54h,52h,4Fh,4Eh	; "YOU FEEL A STRONG MAGIC!"	;@1414

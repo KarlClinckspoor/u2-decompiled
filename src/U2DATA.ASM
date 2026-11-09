@@ -171,7 +171,7 @@ ReadySpell label byte	; Ztats "SPELL-"; Cast 3154 (0 none .. 9 Kill)
 	db 0h
 Torches label byte	; Ztats "TORCHES-"; Ignite 37AE, loot 2D52
 	db 0h
-Keys label byte	; Ztats "KEYS-"; +2 for killing tile 60h, CMDAL 2CDF
+Keys label byte	; Ztats "KEYS-"; +2 for killing a guard (tile 60h), CMDAL 2CDF
 	db 0h
 Tools label byte	; BCD count; one used to escape a trap (DUNGEON 2904), none = death
 	db 0h,0h,0h

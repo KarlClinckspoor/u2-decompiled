@@ -324,7 +324,8 @@ CreateChar_Hobbit:	call PrintInline	; print "HOBBIT"	;@5851
 	call PrintBcdByte	;@5876
 ; Type: 1-4. First turn the race key into 0-3. BUG: this is also the loop head for a
 ; wrong key at the TYPE prompt (jmp CreateChar_AskType at 5929), so each wrong key takes another 31h
-; off PlayerRace and the race (printed by Ztats as string 44h+race) becomes garbage.
+; off PlayerRace and the race (printed by Ztats as string 44h+race) becomes garbage. Checked in
+; play: human with two wrong keys saves race 9Eh, and Ztats prints no race at all.
 CreateChar_AskType:	clc	;@5879
 	mov al, byte ptr PlayerRace	;@587A
 	sub al, 31h	; '1'-'4' -> 0-3 (again on each retry, see above)	;@587D
