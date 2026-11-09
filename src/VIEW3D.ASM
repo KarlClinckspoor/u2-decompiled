@@ -269,79 +269,60 @@ DrawWalls_Next:	inc byte ptr ViewDepth	;@61FE
 	jmp DrawWalls_Loop	;@6209
 DrawWalls_Done:	ret	;@620C
 ;------------------------------------------------------------------------------
-; ViewCoordTbl: the screen coordinates of the view, one table of byte rows indexed by the depth
-; d (0 = the player's cell). Several rows are also read at d+1, d+2, d+3 through the labels
-; inside the table (L620E = ViewCoordTbl+1 ...). X runs 0-FFh, Y 0-7Fh; the right half mirrors the
-; left (x' = FFh-x), the bottom half the top (y' = 7Fh-y).
-;   +00h (10 bytes) XL: left edge of the depth-d rectangle   (L620E/L620F/L6210 = +01h..+03h)
-;   +0Ah (10 bytes) XR: right edge = FFh-XL                    (L6218/L6219/L621A = +0Bh..+0Dh)
-;   +14h YT: top edge                                          (L6222 = +15h)
-;   +1Ch YB: bottom edge = 7Fh-YT                              (L622A = +1Dh)
-;   +24h, +2Ch: x of the near and far jamb of a door in the left wall (L6232, L623A = d+1:
-;         x of the near/far corners of a ladder hole, left side)
-;   +34h, +3Ch: the same for the right wall (L6242, L624A = d+1, ladder hole right side)
-;   +44h: y of the near jamb foot of a side door; the chest front bottom
-;   +4Ch: y of the far jamb foot of a side door; the chest back edge
-;   +54h: y of the far jamb top of a side door (the near jamb top is YT[d+1])
-;   +5Ch, +64h: y of the near/far edge of a ladder hole in the ceiling (+5Ch = pole top)
-;   +6Ch, +74h: y of the near/far edge of a ladder hole in the floor (+6Ch = pole foot)
-;   +7Ch: y of the chest front top. The table ends at +84h (6291).
+; ViewCoordTbl: the screen coordinates of the 3D view, one byte row per kind of point, each
+; indexed by the depth d (0 = the player's cell). Several rows are also read at d+1, d+2, d+3
+; (written ROW[di+1] ...). X runs 0-FFh, Y 0-7Fh; the right half mirrors the left (x' = FFh-x),
+; the bottom half the top (y' = 7Fh-y). XL and XR have 10 entries (d+3 for d up to 6), the
+; others 8. The table runs from 620D to 6291 in the original.
 ;------------------------------------------------------------------------------
 ViewCoordTbl label byte
-	db 0h	;@620D
-L620E label byte
-	db 40h	;@620E
-L620F label byte
-	db 60h	;@620F
-L6210 label byte
-	db 70h,78h,7Ch,7Eh,7Fh,7Fh,7Fh	;@6210
-L6217 label byte
-	db 0FFh	;@6217
-L6218 label byte
-	db 0BFh	;@6218
-L6219 label byte
-	db 9Fh	;@6219
-L621A label byte
-	db 8Fh,87h,83h,81h,80h,80h,80h	;@621A
-L6221 label byte
-	db 0h	;@6221
-L6222 label byte
-	db 20h,30h,38h,3Ch,3Eh,3Fh,3Fh	;@6222
-L6229 label byte
-	db 7Fh	;@6229
-L622A label byte
-	db 5Fh,4Fh,47h,43h,41h,40h,40h	;@622A
-L6231 label byte
-	db 10h	;@6231
-L6232 label byte
-	db 48h,64h,72h,79h,7Ch,7Fh,7Fh	;@6232
-L6239 label byte
-	db 30h	;@6239
-L623A label byte
-	db 58h,6Ch,76h,7Bh,7Ch,7Fh,7Fh	;@623A
-L6241 label byte
-	db 0EFh	;@6241
-L6242 label byte
-	db 0B7h,9Bh,8Dh,86h,83h,80h,80h	;@6242
-L6249 label byte
-	db 0CFh	;@6249
-L624A label byte
-	db 0A7h,93h,89h,84h,83h,80h,80h	;@624A
-L6251 label byte
+; ViewXL (+00h): x of the left edge of the depth-d rectangle
+ViewXL label byte
+	db 0h,40h,60h,70h,78h,7Ch,7Eh,7Fh,7Fh,7Fh	;@620D
+; ViewXR (+0Ah): x of the right edge (FFh-XL)
+ViewXR label byte
+	db 0FFh,0BFh,9Fh,8Fh,87h,83h,81h,80h,80h,80h	;@6217
+; ViewYT (+14h): y of the top edge
+ViewYT label byte
+	db 0h,20h,30h,38h,3Ch,3Eh,3Fh,3Fh	;@6221
+; ViewYB (+1Ch): y of the bottom edge (7Fh-YT)
+ViewYB label byte
+	db 7Fh,5Fh,4Fh,47h,43h,41h,40h,40h	;@6229
+; ViewLNearX (+24h): x of the near jamb of a left-wall door; [d+1]: ladder hole, near left corner
+ViewLNearX label byte
+	db 10h,48h,64h,72h,79h,7Ch,7Fh,7Fh	;@6231
+; ViewLFarX (+2Ch): x of the far jamb of a left-wall door; [d+1]: ladder hole, far left corner
+ViewLFarX label byte
+	db 30h,58h,6Ch,76h,7Bh,7Ch,7Fh,7Fh	;@6239
+; ViewRNearX (+34h): the same for the right wall: near jamb; [d+1]: ladder hole, near right
+ViewRNearX label byte
+	db 0EFh,0B7h,9Bh,8Dh,86h,83h,80h,80h	;@6241
+; ViewRFarX (+3Ch): far jamb of a right-wall door; [d+1]: ladder hole, far right corner
+ViewRFarX label byte
+	db 0CFh,0A7h,93h,89h,84h,83h,80h,80h	;@6249
+; ViewFootNearY (+44h): y of the near jamb foot of a side door; the chest front bottom
+ViewFootNearY label byte
 	db 77h,5Bh,4Dh,46h,42h,40h,40h,40h	;@6251
-L6259 label byte
+; ViewFootFarY (+4Ch): y of the far jamb foot of a side door; the chest back edge
+ViewFootFarY label byte
 	db 67h,53h,49h,44h,42h,40h,40h,40h	;@6259
-L6261 label byte
+; ViewDoorTopY (+54h): y of the far jamb top of a side door (the near one is YT[d+1])
+ViewDoorTopY label byte
 	db 2Ah,35h,3Bh,3Dh,3Eh,3Fh,3Fh,3Fh	;@6261
-L6269 label byte
+; ViewCeilNearY (+5Ch): y of the near edge of a ladder hole in the ceiling; the pole top
+ViewCeilNearY label byte
 	db 8h,24h,32h,39h,3Ch,3Eh,3Fh,3Fh	;@6269
-L6271 label byte
+; ViewCeilFarY (+64h): y of the far edge of a ladder hole in the ceiling
+ViewCeilFarY label byte
 	db 18h,2Ch,36h,3Ah,3Dh,3Eh,3Fh,3Fh	;@6271
-L6279 label byte
+; ViewFloorNearY (+6Ch): y of the near edge of a ladder hole in the floor; the pole foot
+ViewFloorNearY label byte
 	db 77h,5Bh,4Dh,46h,43h,41h,40h,40h	;@6279
-L6281 label byte
+; ViewFloorFarY (+74h): y of the far edge of a ladder hole in the floor
+ViewFloorFarY label byte
 	db 67h,53h,49h,45h,42h,41h,40h,40h	;@6281
-L6289 label byte
+; ViewChestTopY (+7Ch): y of the chest front top
+ViewChestTopY label byte
 	db 6Fh,57h,4Bh,45h,42h,40h,40h,40h	;@6289
 ;------------------------------------------------------------------------------
 ; DrawLeftOpening: left side open at depth d: the near corner edge (x = XL[d]) and the face of the
@@ -351,33 +332,33 @@ L6289 label byte
 DrawLeftOpening:	mov bh, 0	;@6291
 	mov bl, byte ptr ViewDepth	;@6293
 	mov di, bx	;@6297
-	mov al, byte ptr cs:ViewCoordTbl[di]	;@6299
+	mov al, byte ptr cs:ViewXL[di]	;@6299
 	mov byte ptr PlotX, al	;@629E
 	mov byte ptr LineEndX, al	;@62A1
-	mov al, byte ptr cs:L6221[di]	;@62A4
+	mov al, byte ptr cs:ViewYT[di]	;@62A4
 	mov byte ptr PlotY, al	;@62A9
-	mov al, byte ptr cs:L6229[di]	;@62AC
+	mov al, byte ptr cs:ViewYB[di]	;@62AC
 	mov byte ptr LineEndY, al	;@62B1
 	call DrawViewLine	;@62B4
 	mov bh, 0	;@62B7
 	mov bl, byte ptr ViewDepth	;@62B9
 	mov di, bx	;@62BD
-	mov al, byte ptr cs:L6222[di]	;@62BF
+	mov al, byte ptr cs:ViewYT[di+1]	;@62BF
 	mov byte ptr PlotY, al	;@62C4
 	mov byte ptr LineEndY, al	;@62C7
-	mov al, byte ptr cs:L620E[di]	;@62CA
+	mov al, byte ptr cs:ViewXL[di+1]	;@62CA
 	mov byte ptr LineEndX, al	;@62CF
 	call DrawViewLine	;@62D2
 	mov bh, 0	;@62D5
 	mov bl, byte ptr ViewDepth	;@62D7
 	mov di, bx	;@62DB
-	mov al, byte ptr cs:L622A[di]	;@62DD
+	mov al, byte ptr cs:ViewYB[di+1]	;@62DD
 	mov byte ptr LineEndY, al	;@62E2
 	call DrawViewLine	;@62E5
 	mov bh, 0	;@62E8
 	mov bl, byte ptr ViewDepth	;@62EA
 	mov di, bx	;@62EE
-	mov al, byte ptr cs:ViewCoordTbl[di]	;@62F0
+	mov al, byte ptr cs:ViewXL[di]	;@62F0
 	mov byte ptr LineEndX, al	;@62F5
 	call DrawViewLine	;@62F8
 	mov bh, 0	;@62FB
@@ -391,33 +372,33 @@ DrawLeftOpening:	mov bh, 0	;@6291
 DrawRightOpening:	mov bh, 0	;@6304
 	mov bl, byte ptr ViewDepth	;@6306
 	mov di, bx	;@630A
-	mov al, byte ptr cs:L6217[di]	;@630C
+	mov al, byte ptr cs:ViewXR[di]	;@630C
 	mov byte ptr PlotX, al	;@6311
 	mov byte ptr LineEndX, al	;@6314
-	mov al, byte ptr cs:L6221[di]	;@6317
+	mov al, byte ptr cs:ViewYT[di]	;@6317
 	mov byte ptr PlotY, al	;@631C
-	mov al, byte ptr cs:L6229[di]	;@631F
+	mov al, byte ptr cs:ViewYB[di]	;@631F
 	mov byte ptr LineEndY, al	;@6324
 	call DrawViewLine	;@6327
 	mov bh, 0	;@632A
 	mov bl, byte ptr ViewDepth	;@632C
 	mov di, bx	;@6330
-	mov al, byte ptr cs:L6222[di]	;@6332
+	mov al, byte ptr cs:ViewYT[di+1]	;@6332
 	mov byte ptr PlotY, al	;@6337
 	mov byte ptr LineEndY, al	;@633A
-	mov al, byte ptr cs:L6218[di]	;@633D
+	mov al, byte ptr cs:ViewXR[di+1]	;@633D
 	mov byte ptr LineEndX, al	;@6342
 	call DrawViewLine	;@6345
 	mov bh, 0	;@6348
 	mov bl, byte ptr ViewDepth	;@634A
 	mov di, bx	;@634E
-	mov al, byte ptr cs:L622A[di]	;@6350
+	mov al, byte ptr cs:ViewYB[di+1]	;@6350
 	mov byte ptr LineEndY, al	;@6355
 	call DrawViewLine	;@6358
 	mov bh, 0	;@635B
 	mov bl, byte ptr ViewDepth	;@635D
 	mov di, bx	;@6361
-	mov al, byte ptr cs:L6217[di]	;@6363
+	mov al, byte ptr cs:ViewXR[di]	;@6363
 	mov byte ptr LineEndX, al	;@6368
 	call DrawViewLine	;@636B
 	mov bh, 0	;@636E
@@ -431,23 +412,23 @@ DrawRightOpening:	mov bh, 0	;@6304
 DrawLeftWall:	mov bh, 0	;@6377
 	mov bl, byte ptr ViewDepth	;@6379
 	mov di, bx	;@637D
-	mov al, byte ptr cs:ViewCoordTbl[di]	;@637F
+	mov al, byte ptr cs:ViewXL[di]	;@637F
 	mov byte ptr PlotX, al	;@6384
-	mov al, byte ptr cs:L620E[di]	;@6387
+	mov al, byte ptr cs:ViewXL[di+1]	;@6387
 	mov byte ptr LineEndX, al	;@638C
-	mov al, byte ptr cs:L6221[di]	;@638F
+	mov al, byte ptr cs:ViewYT[di]	;@638F
 	mov byte ptr PlotY, al	;@6394
-	mov al, byte ptr cs:L6222[di]	;@6397
+	mov al, byte ptr cs:ViewYT[di+1]	;@6397
 	mov byte ptr LineEndY, al	;@639C
 	call DrawViewLine	;@639F
 	mov bh, 0	;@63A2
 	mov bl, byte ptr ViewDepth	;@63A4
 	mov di, bx	;@63A8
-	mov al, byte ptr cs:ViewCoordTbl[di]	;@63AA
+	mov al, byte ptr cs:ViewXL[di]	;@63AA
 	mov byte ptr LineEndX, al	;@63AF
-	mov al, byte ptr cs:L6229[di]	;@63B2
+	mov al, byte ptr cs:ViewYB[di]	;@63B2
 	mov byte ptr LineEndY, al	;@63B7
-	mov al, byte ptr cs:L622A[di]	;@63BA
+	mov al, byte ptr cs:ViewYB[di+1]	;@63BA
 	mov byte ptr PlotY, al	;@63BF
 	call DrawViewLine	;@63C2
 	mov bh, 0	;@63C5
@@ -461,23 +442,23 @@ DrawLeftWall:	mov bh, 0	;@6377
 DrawRightWall:	mov bh, 0	;@63CE
 	mov bl, byte ptr ViewDepth	;@63D0
 	mov di, bx	;@63D4
-	mov al, byte ptr cs:L6217[di]	;@63D6
+	mov al, byte ptr cs:ViewXR[di]	;@63D6
 	mov byte ptr PlotX, al	;@63DB
-	mov al, byte ptr cs:L6218[di]	;@63DE
+	mov al, byte ptr cs:ViewXR[di+1]	;@63DE
 	mov byte ptr LineEndX, al	;@63E3
-	mov al, byte ptr cs:L6221[di]	;@63E6
+	mov al, byte ptr cs:ViewYT[di]	;@63E6
 	mov byte ptr PlotY, al	;@63EB
-	mov al, byte ptr cs:L6222[di]	;@63EE
+	mov al, byte ptr cs:ViewYT[di+1]	;@63EE
 	mov byte ptr LineEndY, al	;@63F3
 	call DrawViewLine	;@63F6
 	mov bh, 0	;@63F9
 	mov bl, byte ptr ViewDepth	;@63FB
 	mov di, bx	;@63FF
-	mov al, byte ptr cs:L6217[di]	;@6401
+	mov al, byte ptr cs:ViewXR[di]	;@6401
 	mov byte ptr LineEndX, al	;@6406
-	mov al, byte ptr cs:L6229[di]	;@6409
+	mov al, byte ptr cs:ViewYB[di]	;@6409
 	mov byte ptr LineEndY, al	;@640E
-	mov al, byte ptr cs:L622A[di]	;@6411
+	mov al, byte ptr cs:ViewYB[di+1]	;@6411
 	mov byte ptr PlotY, al	;@6416
 	call DrawViewLine	;@6419
 	mov bh, 0	;@641C
@@ -492,30 +473,30 @@ DrawRightWall:	mov bh, 0	;@63CE
 DrawDepthRect:	mov bh, 0	;@6425
 	mov bl, byte ptr ViewDepth	;@6427
 	mov di, bx	;@642B
-	mov al, byte ptr cs:ViewCoordTbl[di]	;@642D
+	mov al, byte ptr cs:ViewXL[di]	;@642D
 	mov byte ptr PlotX, al	;@6432
-	mov al, byte ptr cs:L6221[di]	;@6435
+	mov al, byte ptr cs:ViewYT[di]	;@6435
 	mov byte ptr PlotY, al	;@643A
 	mov byte ptr LineEndY, al	;@643D
-	mov al, byte ptr cs:L6217[di]	;@6440
+	mov al, byte ptr cs:ViewXR[di]	;@6440
 	mov byte ptr LineEndX, al	;@6445
 	call DrawViewLine	;@6448
 	mov bh, 0	;@644B
 	mov bl, byte ptr ViewDepth	;@644D
 	mov di, bx	;@6451
-	mov al, byte ptr cs:L6229[di]	;@6453
+	mov al, byte ptr cs:ViewYB[di]	;@6453
 	mov byte ptr LineEndY, al	;@6458
 	call DrawViewLine	;@645B
 	mov bh, 0	;@645E
 	mov bl, byte ptr ViewDepth	;@6460
 	mov di, bx	;@6464
-	mov al, byte ptr cs:ViewCoordTbl[di]	;@6466
+	mov al, byte ptr cs:ViewXL[di]	;@6466
 	mov byte ptr LineEndX, al	;@646B
 	call DrawViewLine	;@646E
 	mov bh, 0	;@6471
 	mov bl, byte ptr ViewDepth	;@6473
 	mov di, bx	;@6477
-	mov al, byte ptr cs:L6221[di]	;@6479
+	mov al, byte ptr cs:ViewYT[di]	;@6479
 	mov byte ptr LineEndY, al	;@647E
 	call DrawViewLine	;@6481
 	mov bh, 0	;@6484
@@ -530,24 +511,24 @@ DrawDepthRect:	mov bh, 0	;@6425
 DrawFrontDoor:	mov bh, 0	;@648D
 	mov bl, byte ptr ViewDepth	;@648F
 	mov di, bx	;@6493
-	mov al, byte ptr cs:L620E[di]	;@6495
+	mov al, byte ptr cs:ViewXL[di+1]	;@6495
 	mov byte ptr PlotX, al	;@649A
 	mov byte ptr LineEndX, al	;@649D
-	mov al, byte ptr cs:L6229[di]	;@64A0
+	mov al, byte ptr cs:ViewYB[di]	;@64A0
 	mov byte ptr PlotY, al	;@64A5
-	mov al, byte ptr cs:L6222[di]	;@64A8
+	mov al, byte ptr cs:ViewYT[di+1]	;@64A8
 	mov byte ptr LineEndY, al	;@64AD
 	call DrawViewLine	;@64B0
 	mov bh, 0	;@64B3
 	mov bl, byte ptr ViewDepth	;@64B5
 	mov di, bx	;@64B9
-	mov al, byte ptr cs:L6218[di]	;@64BB
+	mov al, byte ptr cs:ViewXR[di+1]	;@64BB
 	mov byte ptr LineEndX, al	;@64C0
 	call DrawViewLine	;@64C3
 	mov bh, 0	;@64C6
 	mov bl, byte ptr ViewDepth	;@64C8
 	mov di, bx	;@64CC
-	mov al, byte ptr cs:L6229[di]	;@64CE
+	mov al, byte ptr cs:ViewYB[di]	;@64CE
 	mov byte ptr LineEndY, al	;@64D3
 	call DrawViewLine	;@64D6
 	mov bh, 0	;@64D9
@@ -555,33 +536,33 @@ DrawFrontDoor:	mov bh, 0	;@648D
 	mov di, bx	;@64DF
 	ret	;@64E1
 ;------------------------------------------------------------------------------
-; DrawLeftDoor: a door in the left wall at depth d: near jamb (+24h) up to YT[d+1], the slanted
-; top to the far jamb (+2Ch, top +54h), the far jamb down to +4Ch. Open at the bottom.
+; DrawLeftDoor: a door in the left wall at depth d: near jamb (x LNearX, from FootNearY) up to
+; YT[d+1], the slanted top to the far jamb (x LFarX, top DoorTopY), the far jamb down to FootFarY. Open at the bottom.
 ; In: ViewDepth = d. Out: DI = d.
 ;------------------------------------------------------------------------------
 DrawLeftDoor:	mov bh, 0	;@64E2
 	mov bl, byte ptr ViewDepth	;@64E4
 	mov di, bx	;@64E8
-	mov al, byte ptr cs:L6231[di]	;@64EA
+	mov al, byte ptr cs:ViewLNearX[di]	;@64EA
 	mov byte ptr PlotX, al	;@64EF
 	mov byte ptr LineEndX, al	;@64F2
-	mov al, byte ptr cs:L6251[di]	;@64F5
+	mov al, byte ptr cs:ViewFootNearY[di]	;@64F5
 	mov byte ptr PlotY, al	;@64FA
-	mov al, byte ptr cs:L6222[di]	;@64FD
+	mov al, byte ptr cs:ViewYT[di+1]	;@64FD
 	mov byte ptr LineEndY, al	;@6502
 	call DrawViewLine	;@6505
 	mov bh, 0	;@6508
 	mov bl, byte ptr ViewDepth	;@650A
 	mov di, bx	;@650E
-	mov al, byte ptr cs:L6239[di]	;@6510
+	mov al, byte ptr cs:ViewLFarX[di]	;@6510
 	mov byte ptr LineEndX, al	;@6515
-	mov al, byte ptr cs:L6261[di]	;@6518
+	mov al, byte ptr cs:ViewDoorTopY[di]	;@6518
 	mov byte ptr LineEndY, al	;@651D
 	call DrawViewLine	;@6520
 	mov bh, 0	;@6523
 	mov bl, byte ptr ViewDepth	;@6525
 	mov di, bx	;@6529
-	mov al, byte ptr cs:L6259[di]	;@652B
+	mov al, byte ptr cs:ViewFootFarY[di]	;@652B
 	mov byte ptr LineEndY, al	;@6530
 	call DrawViewLine	;@6533
 	mov bh, 0	;@6536
@@ -595,64 +576,64 @@ DrawLeftDoor:	mov bh, 0	;@64E2
 DrawRightDoor:	mov bh, 0	;@653F
 	mov bl, byte ptr ViewDepth	;@6541
 	mov di, bx	;@6545
-	mov al, byte ptr cs:L6241[di]	;@6547
+	mov al, byte ptr cs:ViewRNearX[di]	;@6547
 	mov byte ptr PlotX, al	;@654C
 	mov byte ptr LineEndX, al	;@654F
-	mov al, byte ptr cs:L6251[di]	;@6552
+	mov al, byte ptr cs:ViewFootNearY[di]	;@6552
 	mov byte ptr PlotY, al	;@6557
-	mov al, byte ptr cs:L6222[di]	;@655A
+	mov al, byte ptr cs:ViewYT[di+1]	;@655A
 	mov byte ptr LineEndY, al	;@655F
 	call DrawViewLine	;@6562
 	mov bh, 0	;@6565
 	mov bl, byte ptr ViewDepth	;@6567
 	mov di, bx	;@656B
-	mov al, byte ptr cs:L6249[di]	;@656D
+	mov al, byte ptr cs:ViewRFarX[di]	;@656D
 	mov byte ptr LineEndX, al	;@6572
-	mov al, byte ptr cs:L6261[di]	;@6575
+	mov al, byte ptr cs:ViewDoorTopY[di]	;@6575
 	mov byte ptr LineEndY, al	;@657A
 	call DrawViewLine	;@657D
 	mov bh, 0	;@6580
 	mov bl, byte ptr ViewDepth	;@6582
 	mov di, bx	;@6586
-	mov al, byte ptr cs:L6259[di]	;@6588
+	mov al, byte ptr cs:ViewFootFarY[di]	;@6588
 	mov byte ptr LineEndY, al	;@658D
 	call DrawViewLine	;@6590
 	ret	;@6593
 ;------------------------------------------------------------------------------
 ; DrawLadderDown: a ladder down in the cell at depth d: the hole in the floor (a trapezoid between
-; rows +6Ch and +74h) and the pole (DrawLadderPole).
+; rows FloorNearY and FloorFarY, x from the four Near/FarX rows at d+1) and the pole (DrawLadderPole).
 ; In: ViewDepth = d. Out: DI = d.
 ;------------------------------------------------------------------------------
 DrawLadderDown:	mov bh, 0	;@6594
 	mov bl, byte ptr ViewDepth	;@6596
 	mov di, bx	;@659A
-	mov al, byte ptr cs:L6232[di]	;@659C
+	mov al, byte ptr cs:ViewLNearX[di+1]	;@659C
 	mov byte ptr PlotX, al	;@65A1
-	mov al, byte ptr cs:L623A[di]	;@65A4
+	mov al, byte ptr cs:ViewLFarX[di+1]	;@65A4
 	mov byte ptr LineEndX, al	;@65A9
-	mov al, byte ptr cs:L6279[di]	;@65AC
+	mov al, byte ptr cs:ViewFloorNearY[di]	;@65AC
 	mov byte ptr PlotY, al	;@65B1
-	mov al, byte ptr cs:L6281[di]	;@65B4
+	mov al, byte ptr cs:ViewFloorFarY[di]	;@65B4
 	mov byte ptr LineEndY, al	;@65B9
 	call DrawViewLine	;@65BC
 	mov bh, 0	;@65BF
 	mov bl, byte ptr ViewDepth	;@65C1
 	mov di, bx	;@65C5
-	mov al, byte ptr cs:L624A[di]	;@65C7
+	mov al, byte ptr cs:ViewRFarX[di+1]	;@65C7
 	mov byte ptr LineEndX, al	;@65CC
 	call DrawViewLine	;@65CF
 	mov bh, 0	;@65D2
 	mov bl, byte ptr ViewDepth	;@65D4
 	mov di, bx	;@65D8
-	mov al, byte ptr cs:L6242[di]	;@65DA
+	mov al, byte ptr cs:ViewRNearX[di+1]	;@65DA
 	mov byte ptr LineEndX, al	;@65DF
-	mov al, byte ptr cs:L6279[di]	;@65E2
+	mov al, byte ptr cs:ViewFloorNearY[di]	;@65E2
 	mov byte ptr LineEndY, al	;@65E7
 	call DrawViewLine	;@65EA
 	mov bh, 0	;@65ED
 	mov bl, byte ptr ViewDepth	;@65EF
 	mov di, bx	;@65F3
-	mov al, byte ptr cs:L6232[di]	;@65F5
+	mov al, byte ptr cs:ViewLNearX[di+1]	;@65F5
 	mov byte ptr LineEndX, al	;@65FA
 	call DrawViewLine	;@65FD
 	call DrawLadderPole	;@6600
@@ -661,40 +642,40 @@ DrawLadderDown:	mov bh, 0	;@6594
 	mov di, bx	;@6609
 	ret	;@660B
 ;------------------------------------------------------------------------------
-; DrawLadderUp: a ladder up in the cell at depth d: the hole in the ceiling (rows +5Ch and +64h)
+; DrawLadderUp: a ladder up in the cell at depth d: the hole in the ceiling (rows CeilNearY and CeilFarY)
 ; and the pole (DrawLadderPole).
 ; In: ViewDepth = d. Out: DI = d.
 ;------------------------------------------------------------------------------
 DrawLadderUp:	mov bh, 0	;@660C
 	mov bl, byte ptr ViewDepth	;@660E
 	mov di, bx	;@6612
-	mov al, byte ptr cs:L6232[di]	;@6614
+	mov al, byte ptr cs:ViewLNearX[di+1]	;@6614
 	mov byte ptr PlotX, al	;@6619
-	mov al, byte ptr cs:L623A[di]	;@661C
+	mov al, byte ptr cs:ViewLFarX[di+1]	;@661C
 	mov byte ptr LineEndX, al	;@6621
-	mov al, byte ptr cs:L6269[di]	;@6624
+	mov al, byte ptr cs:ViewCeilNearY[di]	;@6624
 	mov byte ptr PlotY, al	;@6629
-	mov al, byte ptr cs:L6271[di]	;@662C
+	mov al, byte ptr cs:ViewCeilFarY[di]	;@662C
 	mov byte ptr LineEndY, al	;@6631
 	call DrawViewLine	;@6634
 	mov bh, 0	;@6637
 	mov bl, byte ptr ViewDepth	;@6639
 	mov di, bx	;@663D
-	mov al, byte ptr cs:L624A[di]	;@663F
+	mov al, byte ptr cs:ViewRFarX[di+1]	;@663F
 	mov byte ptr LineEndX, al	;@6644
 	call DrawViewLine	;@6647
 	mov bh, 0	;@664A
 	mov bl, byte ptr ViewDepth	;@664C
 	mov di, bx	;@6650
-	mov al, byte ptr cs:L6242[di]	;@6652
+	mov al, byte ptr cs:ViewRNearX[di+1]	;@6652
 	mov byte ptr LineEndX, al	;@6657
-	mov al, byte ptr cs:L6269[di]	;@665A
+	mov al, byte ptr cs:ViewCeilNearY[di]	;@665A
 	mov byte ptr LineEndY, al	;@665F
 	call DrawViewLine	;@6662
 	mov bh, 0	;@6665
 	mov bl, byte ptr ViewDepth	;@6667
 	mov di, bx	;@666B
-	mov al, byte ptr cs:L6232[di]	;@666D
+	mov al, byte ptr cs:ViewLNearX[di+1]	;@666D
 	mov byte ptr LineEndX, al	;@6672
 	call DrawViewLine	;@6675
 	call DrawLadderPole	;@6678
@@ -703,8 +684,8 @@ DrawLadderUp:	mov bh, 0	;@660C
 	mov di, bx	;@6681
 	ret	;@6683
 ;------------------------------------------------------------------------------
-; DrawLadderPole: the ladder pole at depth d: two vertical lines at x = 7Fh and 80h from y = +5Ch
-; (ceiling) to +6Ch (floor).
+; DrawLadderPole: the ladder pole at depth d: two vertical lines at x = 7Fh and 80h from y = CeilNearY
+; (ceiling) to FloorNearY (floor).
 ; In: ViewDepth = d. Out: DI = d.
 ;------------------------------------------------------------------------------
 DrawLadderPole:	mov bh, 0	;@6684
@@ -713,9 +694,9 @@ DrawLadderPole:	mov bh, 0	;@6684
 	mov al, 7Fh	;@668C
 	mov byte ptr PlotX, al	;@668E
 	mov byte ptr LineEndX, al	;@6691
-	mov al, byte ptr cs:L6269[di]	;@6694
+	mov al, byte ptr cs:ViewCeilNearY[di]	;@6694
 	mov byte ptr PlotY, al	;@6699
-	mov al, byte ptr cs:L6279[di]	;@669C
+	mov al, byte ptr cs:ViewFloorNearY[di]	;@669C
 	mov byte ptr LineEndY, al	;@66A1
 	call DrawViewLine	;@66A4
 	mov bh, 0	;@66A7
@@ -724,84 +705,84 @@ DrawLadderPole:	mov bh, 0	;@6684
 	mov al, 80h	;@66AF
 	mov byte ptr PlotX, al	;@66B1
 	mov byte ptr LineEndX, al	;@66B4
-	mov al, byte ptr cs:L6269[di]	;@66B7
+	mov al, byte ptr cs:ViewCeilNearY[di]	;@66B7
 	mov byte ptr PlotY, al	;@66BC
-	mov al, byte ptr cs:L6279[di]	;@66BF
+	mov al, byte ptr cs:ViewFloorNearY[di]	;@66BF
 	mov byte ptr LineEndY, al	;@66C4
 	call DrawViewLine	;@66C7
 	ret	;@66CA
 ;------------------------------------------------------------------------------
 ; DrawChest: a chest in the cell at depth d, a box in oblique view: the front face from
-; (XL[d+2], +7Ch) to (XR[d+3], +44h), the top face going back to the edge at y = +4Ch
+; (XL[d+2], ChestTopY) to (XR[d+3], FootNearY), the top face going back to the edge at y = FootFarY
 ; between XL[d+3] and XR[d+2]. Unlike the others it does not load DI itself: it relies on
 ; DI = d from the caller (DrawViewWalls).
 ; In: DI = ViewDepth = d. Out: DI = d.
 ;------------------------------------------------------------------------------
 DrawChest:	nop	;@66CB
-	mov al, byte ptr cs:L620F[di]	;@66CC
+	mov al, byte ptr cs:ViewXL[di+2]	;@66CC
 	mov byte ptr PlotX, al	;@66D1
-	mov al, byte ptr cs:L6289[di]	;@66D4
+	mov al, byte ptr cs:ViewChestTopY[di]	;@66D4
 	mov byte ptr PlotY, al	;@66D9
 	mov byte ptr LineEndY, al	;@66DC
-	mov al, byte ptr cs:L621A[di]	;@66DF
+	mov al, byte ptr cs:ViewXR[di+3]	;@66DF
 	mov byte ptr LineEndX, al	;@66E4
 	call DrawViewLine	;@66E7
 	mov bh, 0	;@66EA
 	mov bl, byte ptr ViewDepth	;@66EC
 	mov di, bx	;@66F0
-	mov al, byte ptr cs:L6251[di]	;@66F2
+	mov al, byte ptr cs:ViewFootNearY[di]	;@66F2
 	mov byte ptr LineEndY, al	;@66F7
 	call DrawViewLine	;@66FA
 	mov bh, 0	;@66FD
 	mov bl, byte ptr ViewDepth	;@66FF
 	mov di, bx	;@6703
-	mov al, byte ptr cs:L620F[di]	;@6705
+	mov al, byte ptr cs:ViewXL[di+2]	;@6705
 	mov byte ptr LineEndX, al	;@670A
 	call DrawViewLine	;@670D
 	mov bh, 0	;@6710
 	mov bl, byte ptr ViewDepth	;@6712
 	mov di, bx	;@6716
-	mov al, byte ptr cs:L6289[di]	;@6718
+	mov al, byte ptr cs:ViewChestTopY[di]	;@6718
 	mov byte ptr LineEndY, al	;@671D
 	call DrawViewLine	;@6720
 	mov bh, 0	;@6723
 	mov bl, byte ptr ViewDepth	;@6725
 	mov di, bx	;@6729
-	mov al, byte ptr cs:L6210[di]	;@672B
+	mov al, byte ptr cs:ViewXL[di+3]	;@672B
 	mov byte ptr LineEndX, al	;@6730
-	mov al, byte ptr cs:L6259[di]	;@6733
+	mov al, byte ptr cs:ViewFootFarY[di]	;@6733
 	mov byte ptr LineEndY, al	;@6738
 	call DrawViewLine	;@673B
 	mov bh, 0	;@673E
 	mov bl, byte ptr ViewDepth	;@6740
 	mov di, bx	;@6744
-	mov al, byte ptr cs:L6219[di]	;@6746
+	mov al, byte ptr cs:ViewXR[di+2]	;@6746
 	mov byte ptr LineEndX, al	;@674B
 	call DrawViewLine	;@674E
 	mov bh, 0	;@6751
 	mov bl, byte ptr ViewDepth	;@6753
 	mov di, bx	;@6757
-	mov al, byte ptr cs:L6289[di]	;@6759
+	mov al, byte ptr cs:ViewChestTopY[di]	;@6759
 	mov byte ptr LineEndY, al	;@675E
 	call DrawViewLine	;@6761
 	mov bh, 0	;@6764
 	mov bl, byte ptr ViewDepth	;@6766
 	mov di, bx	;@676A
-	mov al, byte ptr cs:L621A[di]	;@676C
+	mov al, byte ptr cs:ViewXR[di+3]	;@676C
 	mov byte ptr LineEndX, al	;@6771
-	mov al, byte ptr cs:L6251[di]	;@6774
+	mov al, byte ptr cs:ViewFootNearY[di]	;@6774
 	mov byte ptr LineEndY, al	;@6779
 	call DrawViewLine	;@677C
 	mov bh, 0	;@677F
 	mov bl, byte ptr ViewDepth	;@6781
 	mov di, bx	;@6785
-	mov al, byte ptr cs:L621A[di]	;@6787
+	mov al, byte ptr cs:ViewXR[di+3]	;@6787
 	mov byte ptr PlotX, al	;@678C
-	mov al, byte ptr cs:L6289[di]	;@678F
+	mov al, byte ptr cs:ViewChestTopY[di]	;@678F
 	mov byte ptr PlotY, al	;@6794
-	mov al, byte ptr cs:L6219[di]	;@6797
+	mov al, byte ptr cs:ViewXR[di+2]	;@6797
 	mov byte ptr LineEndX, al	;@679C
-	mov al, byte ptr cs:L6259[di]	;@679F
+	mov al, byte ptr cs:ViewFootFarY[di]	;@679F
 	mov byte ptr LineEndY, al	;@67A4
 	call DrawViewLine	;@67A7
 	mov bh, 0	;@67AA

@@ -265,9 +265,9 @@ proposals were merged and applied in one rename). From here on: edit `src/*.ASM`
 written. Rename only with `tools/rename.py`. Moving code between modules: keep 8-bit branches
 inside one module and add the EXTRN/PUBLIC lines.
 
-1. **Finish the readable pass**: VIEW3D's ~27 labels into one coordinate table (L6217 etc.)
-   should become `ViewCoordTbl+n` operands (byte-identical; check with build.py and shift.py);
-   the creatures behind the monster tiles and the other open questions in docs/FINDINGS.md
+1. **Finish the readable pass**: (done: VIEW3D's coordinate table is 16 named rows, ViewXL ...
+   ViewChestTopY, read as `ViewXL[di+2]` where the code looks d+2 deep; no Lxxxx label points
+   into it any more.) Left: the creatures behind the monster tiles and the other open questions in docs/FINDINGS.md
    (play the game to settle them); name the remaining `Lxxxx` labels where a name helps;
    check the comments against play where they say "?".
 2. Try the findings in play (the Ctrl-Right speed bug, the Ready/Wear BCD limits, ...).
