@@ -1,0 +1,7 @@
+gamedata/
+build/
+tools/*.7z
+tools/*.zip
+__pycache__/
+*.pyc
+.claude/settings.local.json
