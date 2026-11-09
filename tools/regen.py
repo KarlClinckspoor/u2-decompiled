@@ -3,10 +3,10 @@
 load image with ULTIMAII.EXE, and repeat, adding every instruction that assembles differently to
 the force file (those are written as db), until the image is identical.
 
-    python3 tools/regen.py [WORKDIR] [MASM3|MASM4]      (ITER env: max iterations, default 40)
+    python3 tools/regen.py [WORKDIR] [MASM4|MASM3]      (ITER env: max iterations, default 40)
 
 WORKDIR defaults to build/regen and gets U2.ASM, U2.LST, U2.ins and U2.force (seeded from
-tools/U2.force, the 22 addresses the loop forced). src/U2.ASM is the source of truth since it was
+tools/U2.force: 5D31, the one instruction MASM can't encode). src/U2.ASM is the source of truth since it was
 frozen; this is a tool for re-deriving pieces, its output is never copied over src/ wholesale.
 """
 import os, shutil, sys, subprocess, struct
@@ -16,7 +16,7 @@ sys.path.insert(0, HERE)
 import dos as dosmod
 exe = os.path.join(ROOT, 'gamedata', 'ULTIMAII.EXE')
 work = sys.argv[1] if len(sys.argv) > 1 else os.path.join(ROOT, 'build', 'regen')
-asm = sys.argv[2] if len(sys.argv) > 2 else 'MASM3'
+asm = sys.argv[2] if len(sys.argv) > 2 else 'MASM4'
 os.makedirs(work, exist_ok=True)
 if not os.path.exists(os.path.join(work, 'U2.force')):
     shutil.copy(os.path.join(HERE, 'U2.force'), os.path.join(work, 'U2.force'))
