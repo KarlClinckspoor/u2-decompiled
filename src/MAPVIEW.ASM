@@ -1,5 +1,18 @@
 ; MAPVIEW.ASM: drawing the outdoor and town map window.
 ; Part of ULTIMAII.EXE (src/u2.lnk lists the modules in link order); original addresses 5AB1-5C90.
+;
+; L5AB1 (the only entry point) updates the map window: 20 x 10 tiles of the 64x64 map around
+; the player (D_0000, D_0001), who is in column 9, row 5. Two versions of the same loop: maps
+; that wrap round (D_0012 = FFh: the outdoor maps) and maps with an edge, outside of which
+; every square shows the tile D_0012 (towns, castles).
+; Map bytes are tile number * 4; the window caches hold tile number * 2 (a word index into the
+; pointer table D_05B0). D_0272 = the new window, D_0372 = what is on the screen. A cell that
+; did not change gets bit 7 set in D_0272 and L4AAD skips it, except water (0; unless
+; D_054E = FFh) and the force field (2Eh), which are animated and always redrawn.
+; Also leaves the tiles under and around the player in D_0014-D_0018 for the movement code
+; and puts the player's icon D_0013 in the centre cell.
+; Scratch: D_0002/D_0003 (top-left map square), D_0004/D_0005 (column/row counters),
+; D_0006/D_0007 (map address), the CS byte L5AB0 (defined in CHARGEN).
 CODE SEGMENT BYTE PUBLIC
 CODE ENDS
 DATA SEGMENT PARA PUBLIC
@@ -15,9 +28,19 @@ CODE SEGMENT BYTE PUBLIC
 	EXTRN L4AAD:NEAR, L5AB0:BYTE
 	PUBLIC L5AB1
 ASSUME CS:CODE, DS:DATA
+;------------------------------------------------------------------------------
+; L5AB1: update the map window around the player and draw what changed.
+; Fills D_0272 (20 x 10 cells, see the module header), sets D_0014 = tile
+; under the player, D_0015/D_0016/D_0017/D_0018 = tiles north/south/east/west
+; (cache values, bit 7 possibly set: callers mask it), puts the icon D_0013 in
+; the centre cell, draws with L4AAD and copies D_0272 (without bit 7) to D_0372.
+; In: D_0000/D_0001 (player), D_0012, D_0013, D_0472 (map buffer), D_054E.
+; Out: D_0014-D_0018, D_0272, D_0372. Uses: AX, BX, SI, DI, D_0002-D_0007.
+;------------------------------------------------------------------------------
 L5AB1:	cmp byte ptr D_0012, 0FFh	;@5AB1
 	jne L5ABB	;@5AB6
-	jmp L5B98	;@5AB8
+	jmp L5B98		; FFh: the map wraps round	;@5AB8
+; map with an edge: top-left square = (x-9, y-5); stc/cmc/sbb/cmc = 6502 SEC/SBC
 L5ABB:	stc	;@5ABB
 	mov al, byte ptr D_0001	;@5ABC
 	cmc	;@5ABF
@@ -34,21 +57,22 @@ L5ABB:	stc	;@5ABB
 	mov byte ptr D_0005, al	;@5AD3
 	mov byte ptr D_0004, al	;@5AD6
 	mov ah, 0	;@5AD9
-	mov si, ax	;@5ADB
+	mov si, ax		; SI = 0	;@5ADB
 	mov ah, 0	;@5ADD
-	mov di, ax	;@5ADF
+	mov di, ax		; DI = cell index into D_0272/D_0372	;@5ADF
 L5AE1:	clc	;@5AE1
 	mov al, byte ptr D_0004	;@5AE2
 	adc al, byte ptr D_0002	;@5AE5
-	cmp al, 40h	;@5AE9
+	cmp al, 40h		; map x outside 0-63 (negative = above 7Fh)?	;@5AE9
 	jae L5AF9	;@5AEB
 	clc	;@5AED
 	mov al, byte ptr D_0005	;@5AEE
 	adc al, byte ptr D_0003	;@5AF1
 	cmp al, 40h	;@5AF5
 	jb L5AFF	;@5AF7
-L5AF9:	mov al, byte ptr D_0012	;@5AF9
+L5AF9:	mov al, byte ptr D_0012		; outside the map: the border tile	;@5AF9
 	jmp L5B33	;@5AFC
+; address = map buffer + 64*y + x: rotate y's low 2 bits into the top of AL
 L5AFF:	mov byte ptr D_0007, al	;@5AFF
 	mov al, 0	;@5B02
 	clc	;@5B04
@@ -62,13 +86,14 @@ L5AFF:	mov byte ptr D_0007, al	;@5AFF
 	mov byte ptr D_0006, al	;@5B1A
 	clc	;@5B1D
 	mov al, byte ptr D_0007	;@5B1E
-	adc al, byte ptr D_0473	;@5B21
+	adc al, byte ptr D_0473		; + high byte of the map buffer address	;@5B21
 	mov byte ptr D_0007, al	;@5B25
 	mov bx, word ptr D_0006	;@5B28
 	mov al, byte ptr [bx+si]	;@5B2C
 	clc	;@5B2E
 	rcr al, 1	;@5B2F
-	and al, 0FEh	;@5B31
+	and al, 0FEh		; map byte / 2 = tile number * 2	;@5B31
+; unchanged since the last draw? then mark it (bit 7), except animated water and force field
 L5B33:	cmp al, byte ptr D_0372[di]	;@5B33
 	jne L5B4D	;@5B37
 	cmp al, 0	;@5B39
@@ -76,22 +101,23 @@ L5B33:	cmp al, byte ptr D_0372[di]	;@5B33
 	cmp byte ptr D_054E, 0FFh	;@5B3D
 	jne L5B4D	;@5B42
 	jmp L5B4B	;@5B44
-L5B47:	cmp al, 2Eh	;@5B47
+L5B47:	cmp al, 2Eh		; tile 23, the force field	;@5B47
 	je L5B4D	;@5B49
 L5B4B:	or al, 80h	;@5B4B
 L5B4D:	mov byte ptr D_0272[di], al	;@5B4D
 	inc di	;@5B51
 	inc byte ptr D_0004	;@5B52
 	mov al, byte ptr D_0004	;@5B56
-	cmp al, 14h	;@5B59
+	cmp al, 14h		; 20 columns	;@5B59
 	jne L5AE1	;@5B5B
 	mov bx, si	;@5B5D
 	mov byte ptr D_0004, bl	;@5B5F
 	inc byte ptr D_0005	;@5B63
 	mov al, byte ptr D_0005	;@5B67
-	cmp al, 0Ah	;@5B6A
+	cmp al, 0Ah		; 10 rows	;@5B6A
 	je L5B71	;@5B6C
 	jmp L5AE1	;@5B6E
+; cells 6Dh (centre: column 9, row 5), 59h (north), 81h (south), 6Ch (west), 6Eh (east)
 L5B71:	mov al, byte ptr D_02DF	;@5B71
 	mov byte ptr D_0014, al	;@5B74
 	mov al, byte ptr D_02CB	;@5B77
@@ -102,9 +128,10 @@ L5B71:	mov al, byte ptr D_02DF	;@5B71
 	mov byte ptr D_0018, al	;@5B86
 	mov al, byte ptr D_02E0	;@5B89
 	mov byte ptr D_0017, al	;@5B8C
-	mov al, byte ptr D_0013	;@5B8F
+	mov al, byte ptr D_0013		; the player's icon goes in the centre (always drawn)	;@5B8F
 	mov byte ptr D_02DF, al	;@5B92
 	jmp L5C6D	;@5B95
+; map that wraps round: as above, but coordinates are taken mod 64 and L5AB0 holds the x
 L5B98:	stc	;@5B98
 	mov al, byte ptr D_0001	;@5B99
 	cmc	;@5B9C
@@ -130,7 +157,7 @@ L5BC2:	clc	;@5BC2
 	mov al, byte ptr D_0004	;@5BC3
 	adc al, byte ptr D_0002	;@5BC6
 	and al, 3Fh	;@5BCA
-	mov byte ptr cs:L5AB0, al	;@5BCC
+	mov byte ptr cs:L5AB0, al	; map x, kept in a CS byte (self-modified)	;@5BCC
 	clc	;@5BD0
 	mov al, byte ptr D_0005	;@5BD1
 	adc al, byte ptr D_0003	;@5BD4
@@ -189,6 +216,7 @@ L5C49:	mov al, byte ptr D_02DF	;@5C49
 	mov byte ptr D_0017, al	;@5C64
 	mov al, byte ptr D_0013	;@5C67
 	mov byte ptr D_02DF, al	;@5C6A
+; both versions: draw the changed cells, then remember what is on the screen
 L5C6D:	call L4AAD	;@5C6D
 	mov bh, 0	;@5C70
 	mov bl, 0	;@5C72
@@ -198,9 +226,10 @@ L5C76:	mov al, byte ptr D_0272[di]	;@5C76
 	mov byte ptr D_0372[di], al	;@5C7C
 	inc di	;@5C80
 	mov bx, di	;@5C81
-	cmp bl, 0F0h	;@5C83
+	cmp bl, 0F0h		; copies 240 bytes, though the window has 200 cells	;@5C83
 	jne L5C76	;@5C86
 	ret	;@5C88
+; zero padding up to 5C90 (SOUND)
 	db 0h,0h,0h,0h,0h,0h,0h	;@5C89
 CODE ENDS
 END
