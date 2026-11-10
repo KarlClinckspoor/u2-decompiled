@@ -53,6 +53,9 @@ system Python refuses).
 - `tools/shift.py`: relocation test; `tools/play.py`: run a build in DOSBox
 - `tools/cuts.py`, `tools/split.py`: where modules may be cut, and the splitter that made them
 - `tools/syms.py`, `tools/rename.py`, `tools/lint.py`: symbol table, renaming, source checks
+- `c/`: the game read as C, a reading aid (not a port, not byte-matching); one module so far
+  (`shops.c`). `tools/ccheck.py` checks it against the assembly (anchors, texts, calls, tables)
+- `tools/sprites.py`: draws the map tiles and the dungeon monster shapes to PNG
 - `tools/gen.py`, `tools/regen.py`, `tools/u2an.py`: generate the relocatable source from the
   executable and iterate until it assembles identically (for re-deriving pieces; `src/` is the
   source of truth)
