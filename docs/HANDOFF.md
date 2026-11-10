@@ -286,7 +286,7 @@ inside one module and add the EXTRN/PUBLIC lines.
 3. The C reading aid (`c/`): the SHOPS pilot is done and checked; the next modules are CMDMZ
    and CMDAL (the commands), then the rest in the order of the main loop. Judge the pilot first
    (c/README.md says what it can and cannot check). Compiler: MSYS2's gcc is at
-   `C:\msys64\mingw64in` (not on the PATH).
+   `C:\msys64\mingw64\bin` (not on the PATH).
 4. Optional: a port (the u4/u6 `port` directories are models; the C could seed it). The speed-dependent delay
    loops and FCB I/O are what a port must replace.
 
