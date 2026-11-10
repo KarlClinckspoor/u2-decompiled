@@ -272,9 +272,13 @@ inside one module and add the EXTRN/PUBLIC lines.
    open questions at the end of FINDINGS; name the remaining 161 `Lxxxx` labels where a name
    helps; check the comments against play where they say "?".
 2. Try the findings in play. Done in DOSBox: the Ctrl-Right hang, the character-generation race
-   bug, the pub's fixed tip, the Ready BCD limit, the class/race bonuses. Left: Wear's limit,
-   Unlock only sideways, Steal's alarm, Magic Missile's extra point, the ladder spells (these
-   need keys, armour or a dungeon). Test trick: a character can be placed anywhere by editing
+   bug, the pub's fixed tip, the Ready and Wear BCD limits, the class/race bonuses, the ladder
+   spells (they check the square behind the player; Up Ladder can land you inside a wall).
+   Unlock's sideways-only check was settled from the maps (no door needs north/south). Not
+   checkable by playing: Magic Missile's extra point (monster hit points are never shown),
+   Steal's alarm on a stale slot; these and the other reading-only bugs would need a debugger
+   or a memory dump. Items for a test (spells, armour, wand, torches) can be set in the PLAYER
+   record too (FINDINGS has the offsets via `syms.py`: file offset = D address - 36h). Test trick: a character can be placed anywhere by editing
    SurfaceX/SurfaceY (bytes 24h/25h) of the PLAYER file in the play directory, never in gamedata/.
    The game empties the keyboard buffer on every key: send keys about 0.8 s apart.
 3. Optional: a port (the u4/u6 `port` directories are models). The speed-dependent delay

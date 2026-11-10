@@ -16,20 +16,29 @@ are found by reading only.
 - **Ready and Wear** compare a binary n*8 with a BCD agility/strength: the real limits are
   08, 10, 18 ... 48 decimal-looking BCD, not 8, 16, 24. **Checked in play** (Ready): with
   agility 15 the mace (weapon 2, limit 16) readies; the axe (limit 24) gets "THOU ART NOT AGILE
-  ENOUGH TO WIELD!".
+  ENOUGH TO WIELD!". Wear too: with strength 30 (30h = 48) reflect armour (5, limit 40) is worn
+  ("REFLECT READY."), power armour (6, limit 48) gets "THOU ART NOT STRONG ENOUGH TO WEAR!".
 - **Offer's attribute gift** (ALAKAZAM) adds 4 x the amount with no cap: an attribute can wrap
   past 99.
 - **Steal's alarm** (1 in 8) makes monster Temp20 hostile, but Steal never sets Temp20.
-- **Unlock** only looks east or west: doors open only sideways.
+- **Unlock** only looks east or west: doors open only sideways. Harmless in practice: of the 99
+  locked doors (map code A0h, drawn as the letter I) in all town and castle maps, 96 can only be
+  reached from the east or west (wall above and below) and none only from the north or south, so
+  this looks like a deliberate shortcut matching how the maps were drawn.
 - **Character generation**: each wrong key at the TYPE prompt goes back through 5879 and takes
   another 31h off PlayerRace; Ztats then prints a garbage race. **Checked in play**: human plus
   two wrong keys saved race byte 9Eh (31h - 3 x 31h), and Ztats reads "A LEVEL 00 MALE  FIGHTER"
   with no race.
 - **Dungeon Attack** (2E6A): the search loop tests AL (the field that failed) instead of the
   index, can run below entry 0, and doesn't check the slot is alive (a 6502 DEC/LDX/BNE slip).
-- **Magic missile** (32C0): subtract without SEC, usually 1 hit point extra.
+- **Magic missile** (32C0): subtract without SEC, usually 1 hit point extra. (Not visible in
+  play: monster hit points are never shown.)
 - **Ladder spells** (322B/325A) test the cell at LookX/LookY without setting it: after the 3D
-  view that is the square behind the player.
+  view that is the square behind the player. **Checked in play** (dungeon
+  MAPX25): at (7,5) on level 0, where the cell below is empty, Down Ladder facing east fails
+  (behind, (6,5), is a wall on level 1) and facing north works (behind, (7,6), is open). And Up
+  Ladder at (7,6) on level 1 facing north (behind, (7,7), is open on level 0) puts the player
+  inside the solid wall (7,6) of level 0: the view is a blank frame; one step north walks out.
 - **Pub "BUY"**: `and al,3` then `mov al,1` throws the random tip away: a drink always gives
   tip 1. **Checked in play**: five drinks in Towne Linda's PUB DE VARG, five times "ISN'T THIS A
   GREAT GAME?". (Tipping n gold gives tip n+1 or n-1: tipping 4 three times gave tips 3, 5, 5.)

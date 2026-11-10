@@ -666,8 +666,9 @@ Cast_DownLadder:	mov al, byte ptr MapType	;@3224
 	cmp al, 4	;@3227
 	je Cast_LevelMinus	;@3229
 ; Cast_LevelPlus: to level DungeonLevel+1 (at most 0Fh), if the cell at (LookX,LookY) there is
-; empty. LookX/LookY are not set here but left over from earlier code (after the
-; 3D view: the square behind the player): probably a bug.
+; empty. BUG: LookX/LookY are not set here but left over from the 3D view (UpdateDungeonView):
+; the square behind the player. Checked in play: the result depends on the facing, and Up
+; Ladder can put the player inside a wall.
 Cast_LevelPlus:	mov al, byte ptr DungeonLevel	;@322B
 	cmp al, 0Fh	;@322E
 	jb Cast_LevelPlusTry	;@3230

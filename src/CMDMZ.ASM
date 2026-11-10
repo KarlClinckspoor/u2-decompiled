@@ -624,7 +624,8 @@ King_Raise:	mov bx, di	;@42D1
 
 ;------------------------------------------------------------------------------
 ; CmdUnlock (U): Unlock. Asks a direction; only east or west count (DeltaX <> 0;
-; the row stays PlayerY), so doors can only be unlocked sideways. The square
+; the row stays PlayerY), so doors can only be unlocked sideways (the maps put every locked
+; door in a north-south wall, so this never matters). The square
 ; must hold a locked door (map code 0A0h) and a key is used up (Keys). The
 ; door is replaced by the tile the player stands on (TileHere, map code/2).
 ;------------------------------------------------------------------------------
@@ -719,7 +720,8 @@ View_ClearCache:	mov byte ptr TileCache[di], al	;@43DF
 ; CmdWear (W): Wear armour. Asks an armour number 0-6 (7-9 become 0 = skin;
 ; 1 cloth .. 6 power; names at NameStrTbl 1Dh+n) and makes it the worn armour
 ; WornArmour if owned (ArmourCounts[n] <> 0; skin always is) and the strength Strength is
-; above n*8 (binary against BCD, as in Ready: real limits 08,10,..,30).
+; above n*8 (binary against BCD, as in Ready: real limits 08,10,..,30). Checked in play:
+; strength 30 wears reflect (5).
 ; Unlike Ready, "NOT OWNED!" ends without the error beep.
 ; Temp: Temp1F = n.
 ;------------------------------------------------------------------------------
