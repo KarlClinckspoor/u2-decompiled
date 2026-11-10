@@ -17,7 +17,7 @@ Status: two modules so far, every routine of each: `shops.c` = `src/SHOPS.ASM` a
   variables, with the original name in a comment.
 - **Same behaviour, bugs included.** A bug of the original is written as it behaves and marked
   `BUG, as in the original` (see `docs/FINDINGS.md`). The C never "fixes" anything.
-- **Same texts, same order.** Strings are exactly what the game prints (`\n` is the game's
+- **Same texts.** Strings are exactly what the game prints (`\n` is the game's
   carriage return, 8Dh). Text tables are byte-for-byte the assembly's.
 - **Registers and flags disappear.** A routine that returns its result in AL, or in the zero flag,
   returns a value. A routine that ends the player's turn (`jmp EndCommand`) just `return`s;
