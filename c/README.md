@@ -4,8 +4,9 @@ A **reading aid**: for a routine in `../src`, "this is roughly what it does, wri
 programmer would". It is **not a port**, **not byte-matching**, and **has never been run against
 the game**. The assembly is the ground truth; where the two disagree, the C is wrong.
 
-Status: two modules so far, every routine of each: `shops.c` = `src/SHOPS.ASM` and
-`cmdmz.c` = `src/CMDMZ.ASM` (the commands M to Z).
+Status: three modules so far, every routine of each: `shops.c` = `src/SHOPS.ASM`, `cmdal.c` =
+`src/CMDAL.ASM` (the commands A to L, with the fight and the ladder code) and `cmdmz.c` =
+`src/CMDMZ.ASM` (the commands M to Z).
 
 ## Rules
 
@@ -58,5 +59,7 @@ repository.
    Where a C loop replaces repeated assembly (CmdZtats' six attributes), say so in the anchor:
    `/* asm: CmdZtats @4568 unrolled: PutChar-5 ... */` lowers the call counts the check demands.
 
-Writing the C is also a way to find bugs: two turned up this way (the cleric's "SISTER" that can
-never be said, and the carry leak in the attribute gift); see `docs/FINDINGS.md`.
+Writing the C is also a way to find bugs, and to correct claims about them: the cleric's
+"SISTER" that can never be said, the carry leak in the attribute gift, the monster hit down to
+exactly 0 that lives; and the dungeon-attack search turned out to be far less harmful than the
+first reading suggested. See `docs/FINDINGS.md`.

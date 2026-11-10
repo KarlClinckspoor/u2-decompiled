@@ -197,7 +197,7 @@ def asm_callees(region):
     for l in region:
         m = re.match(r'^(?:\w+:)?\s*(?:call|jmp)\s+(?:short\s+)?([A-Za-z_]\w*)\s*(?:;|$)', l.split(';')[0].rstrip() + ';', re.I)
         if m and m.group(1).upper() not in labels and m.group(1) not in IGNORED_CALLEES:
-            out[ALIASES.get(m.group(1), m.group(1))] += 1
+            out[m.group(1)] += 1
     return out
 
 
@@ -298,7 +298,9 @@ def check(path, table, errors):
         calls = asm_callees(region)
         for k, v in notes.items():
             calls[k] -= v
-        missing = ['%s (%d, C has %d)' % (c, n, have[c]) for c, n in sorted(calls.items()) if have[c] < n]
+        # a call of the assembly routine may be a call of the C name or of its alias
+        got_n = lambda c: have[c] + (have[ALIASES[c]] if c in ALIASES else 0)
+        missing = ['%s (%d, C has %d)' % (c, n, got_n(c)) for c, n in sorted(calls.items()) if got_n(c) < n]
         if missing:
             ok = False
             errors.append('%s: the assembly calls more often: %s' % (where, ', '.join(missing)))

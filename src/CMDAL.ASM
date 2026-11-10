@@ -352,7 +352,9 @@ AttackD_Search:	mov al, byte ptr MonsterX[di]	;@2E49
 	jmp AttackD_Found	;@2E67
 ; Probably a porting bug: the loop tests AL (the field that did not match), not the
 ; index, so it stops at the first mismatching zero byte and could run below index 0.
-; (6502: DEC/LDX/BNE, where LDX sets the flags.) It also does not check MonsterTile.
+; (6502: DEC/LDX/BNE, where LDX sets the flags.) Nearly harmless in play: the spawn routine gives every
+; free slot a non-zero x, y and level, so the search runs on to slot 0. It also does not check
+; MonsterTile: a free slot whose random position and level match the square ahead is "found".
 AttackD_Next:	dec byte ptr Temp1F	;@2E6A
 	mov bh, 0	;@2E6E
 	mov bl, byte ptr Temp1F	;@2E70

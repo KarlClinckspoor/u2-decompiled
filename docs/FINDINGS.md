@@ -37,10 +37,25 @@ are found by reading only.
   another 31h off PlayerRace; Ztats then prints a garbage race. **Checked in play**: human plus
   two wrong keys saved race byte 9Eh (31h - 3 x 31h), and Ztats reads "A LEVEL 00 MALE  FIGHTER"
   with no race.
-- **Dungeon Attack** (2E6A): the search loop tests AL (the field that failed) instead of the
-  index, can run below entry 0, and doesn't check the slot is alive (a 6502 DEC/LDX/BNE slip).
-- **Magic missile** (32C0): subtract without SEC, usually 1 hit point extra. (Not visible in
-  play: monster hit points are never shown.)
+- **Dungeon Attack** (2E6A): the search for the monster in front goes down from slot 31 and
+  tests AL (the field that failed to match) instead of the slot number (a 6502 DEC/LDX/BNE slip:
+  LDX sets the flags from the slot number), so it ends at the first slot whose failing field is 0.
+  In play this is nearly harmless: SpawnDungeonMonsters runs every dungeon turn and, for every
+  free slot, stores an odd non-zero x and y and the level (slot / 2) BEFORE deciding whether to
+  accept the monster, so a mismatch is practically always on a non-zero field and the search runs
+  down to slot 0, where it stops (one slot later than intended). The real flaw is that it never
+  looks at MonsterTile: a free slot whose random x, y and level (slot / 2) happen to equal the
+  square in front is "found", and hitting it kills nothing but pays gold and experience and wipes
+  the real monster's bit from the cell. About 1 time in 64 per free slot of that level, whenever
+  the roll matches. Found by reading; the spells (FindMonsterAhead) do check MonsterTile.
+- **A monster hit down to exactly 0 hit points stays alive**: Attack_Damage and the dungeon attack
+  kill only when the damage is MORE than the hit points (the 6502's SEC/SBC borrow test). It is
+  then weak (below 0Fh hit points) and flees. Found by reading.
+- **Magic missile** (32C0): subtract without SEC, usually 1 hit point extra: the damage is 2 x
+  ExpHi + 30 (plus 1 if 2 x ExpHi passes 255) and the carry left over from that sum makes the
+  subtract take one more, unless the sum itself overflowed. The monster dies if it had no more
+  than the damage (HP <= damage), and with one more hit point than that it is left at 0, alive
+  (see above). Not visible in play: monster hit points are never shown.
 - **Ladder spells** (322B/325A) test the cell at LookX/LookY without setting it: after the 3D
   view that is the square behind the player. **Checked in play** (dungeon
   MAPX25): at (7,5) on level 0, where the cell below is empty, Down Ladder facing east fails

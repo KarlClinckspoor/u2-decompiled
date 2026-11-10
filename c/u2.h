@@ -31,6 +31,18 @@ extern u8 *MapCellPtr;          /* D:0006  the map byte GetMapSquare last read (
                                            address; writing through it changes the map)         */
 extern u8 LookX, LookY;         /* D:0023 D:0024  the square being looked at                    */
 extern u8 DeltaX, DeltaY;       /* D:0019 D:001A  a step: 0, 1, or FFh (-1) per axis            */
+extern u8 FacingDX, FacingDY;   /* D:0002 D:0003  which way the player faces underground        */
+extern u8 DungeonLevel;         /* D:0025  0-15; in a tower the floors count upwards            */
+extern u8 *DungeonCellPtr;      /* D:0008  the dungeon cell ReadDungeonCell last read           */
+extern u8 LightTurns;           /* D:0026  turns of light left (96h from a torch or the spell)  */
+extern u8 OffMapTile;           /* D:0012  the tile drawn beyond the map's edge                 */
+extern u8 SurfaceX, SurfaceY;   /* D:005A D:005B  the outdoor position, remembered on entering a town */
+extern u8 RocketParked;         /* D:0069  1 = the rocket stands at RocketX/RocketY             */
+extern u8 RocketX, RocketY;     /* D:006A D:006B                                                */
+extern u8 PlaneFlying;          /* D:054E  FFh while the plane is in the air                    */
+extern u8 KeyNorth, KeySouth, KeyEast, KeyWest;   /* D:026E-0271  the direction keys' codes     */
+extern u8 ArmsParalyzed;        /* D:026C  turns the arms stay paralysed                        */
+extern u8 PlotX, PlotY;         /* D:0479 D:047A  the pixel PlotPixel draws                     */
 
 /* The character. Sex is the letter 'M' or 'F' (character generation stores the key pressed). */
 extern u8 PlayerSex;            /* D:0046                                                       */
@@ -46,7 +58,8 @@ extern u8 Attributes[6];        /* D:004B  strength, agility, stamina, charisma,
 
 /* Packed BCD, two digits per byte (see bcd.h). */
 extern u8 HitPointsHi;          /* D:0051  hit points / 100                                     */
-extern u8 ExpHi;                /* D:0056  experience / 100 = the level                         */
+extern u8 ExpHi, ExpLo;         /* D:0056 D:0057  experience: ExpHi is the level                */
+extern u8 PlayerRecord[256];    /* D:0036  the PLAYER file image: name, sex, class, race, attributes... */
 extern u8 FoodHi;               /* D:0053  food hundreds                                        */
 extern u8 GoldHi, GoldLo;       /* D:0058 D:0059  gold: hundreds, units                         */
 
@@ -63,11 +76,22 @@ extern u8 WeaponCounts[10];     /* D:0076  weapons 0-9 (0 = hands, 9 = the quick
 extern u8 ArmourCounts[7];      /* D:0096  armour 0-6 (0 = skin)                                */
 extern u8 SpellCounts[10];      /* D:00B6  spells 1-9 (index 0 unused)                          */
 extern u8 ItemCounts[16];       /* D:00D6  items 0-15: 0 ring, 1 wand, 2 staff, 3 boots, 5 helms, 13 strange coins... */
+#define Wands        ItemCounts[1]
+#define Staffs       ItemCounts[2]
 #define Helms        ItemCounts[5]
+#define Ankhs        ItemCounts[7]
+#define SkullKeys    ItemCounts[9]
+#define BrassButtons ItemCounts[11]
+#define BlueTassles  ItemCounts[12]
 #define StrangeCoins ItemCounts[13]
+#define TriLithium   ItemCounts[15]
 
 /* The people and monsters of the current map, slots 1-31 (slot 0 holds the town's alarm flag in
  * MonsterMood). */
+extern u8 MonsterX[32];         /* D:0137  position                                             */
+extern u8 MonsterY[32];         /* D:0157                                                       */
+extern u8 MonsterHP[32];        /* D:0177  hit points                                           */
+extern u8 MonsterUnder[32];     /* D:01B7  the tile under it (outdoors); the dungeon level it is on (underground) */
 extern u8 MonsterTile[32];      /* D:0197  map code of the monster, 0 = free slot               */
 extern u8 MonsterMood[32];      /* D:01D7  80h + n = talks (talk file string n); 1 = hostile    */
 extern u8 TimeStopTurns;        /* D:026A  turns of stopped time left                           */
@@ -102,7 +126,14 @@ void SetTextMode(void);                 /* C:4A1C  40x25 text screen, cleared   
 void SetGraphicsMode(void);             /* C:4A3E  the CGA map screen; both tile caches invalid    */
 void DrawStatusLines(void);             /* C:50F9  H.P., FOOD, EXP., GOLD                          */
 
+void PlotPixel(void);                   /* C:4B76  the pixel PlotX, PlotY                          */
+void InvertViewArea(void);              /* C:4B26  the screen flash                                */
+void XorAttackMark(void);               /* C:523E  draws or erases the attack mark next to the player */
+void UpdateMapView(void);               /* C:5AB1  redraws the map window                          */
+
 /* Input. */
+u16  ReadKey(void);                     /* C:4F4D  one poll of the keyboard, it does not wait: AH = 0 for no key,
+                                           else AH = FFh and AL = the key (upper case)             */
 u8   ReadDigit(void);                   /* C:2028  waits for '0'-'9', echoes it; returns 0-9       */
 u8   ReadAsciiKey(void);                /* C:4F4D  ReadKey repeated until it returns an ASCII key (AH = FFh);
                                            returns the upper-cased character                       */
@@ -118,8 +149,25 @@ void AlertTownGuards(void);             /* C:113A  makes the guards hostile     
 void DrawHelmMap(void);                 /* C:29D2  the whole map from above, centred on LookX/LookY */
 void ShopDispatch(void);                /* C:1590  SHOPS: the shop across the counter              */
 
+u8   ReadDungeonCell(u8 level);         /* C:1451  the dungeon cell at LookX/LookY on that level; also sets DungeonCellPtr */
+void LoadMapAndMonsters(void);          /* C:2290  loads the map and monster files for TimeZone and MapType */
+void LoadTalkFile(void);                /* C:22D5                                                  */
+void LeaveToSurface(void);              /* C:243E  from a town back to the outdoor map             */
+void SpaceFlight(void);                 /* C:6999  the rocket's flight; returns when it lands      */
+void PlayerDies(void);                  /* C:0C62  the end of the player; does not return normally */
+void MinaxDead(void);                   /* C:72A0  the end of the game; never returns              */
+/* C:52CA  read (27h) or write (28h) a file in one block: DOS function, a name of 8 letters, a buffer, a length */
+void ReadWriteFile(u8 dos_function, const char *name8, void *buffer, u16 length);
+
 /* Saving, time and sound. */
 void SaveGame(void);                    /* C:22FD  writes the map, the monsters and PLAYER (on Earth only) */
+void PlayFailSound(void);               /* C:5E83 */
+void PlayAttackSound(void);             /* C:5EAC */
+void PlayStepSound(void);               /* C:5EC7 */
+void PlayHitSound(void);                /* C:5ED7 */
+void PlayWarpSound(void);               /* C:5FA6 */
+void PlaySpellSound(void);              /* C:5FC3 */
+void PlaySwingSound(void);              /* C:5FE0 */
 void SpeedDelay(u16 entry_offset);      /* C:0711  a speed-dependent delay: table entry at byte offset n */
 void Beep(void);                        /* C:5C95  the error beep; the original's EndCommandBeep is a Beep
                                            and then the end of the turn                            */
