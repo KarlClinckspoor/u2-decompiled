@@ -12,8 +12,8 @@ to the GOG release, byte for byte.
 
 The game is hand-written 8086 assembly, a close transliteration of the Apple II 6502 code; there
 is no compiler output in it. The source was generated from the executable (`tools/gen.py`) and is
-now edited by hand. It is **relocatable**: every address is a symbol (`Lxxxx` in code, `D_xxxx`
-in data, named after their original addresses for now), so code and data can be added or moved;
+now edited by hand. It is **relocatable**: every address is a symbol with a real name (`tools/syms.py`
+gives each name's original address), so code and data can be added or moved;
 `tools/shift.py` checks this and shifted builds play normally. It is split into one module per
 subsystem (title, main loop, events, shops, commands, screen, text and file I/O, character
 generation, map view, sound, 3D view, space, endgame) plus one for the data. One instruction is

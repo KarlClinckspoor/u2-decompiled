@@ -308,11 +308,11 @@ PrintSex_Female:	call PrintInline	;@506F
 PrintPlayerName:	mov bx, 0	;@507A
 PrintPlayerName_Loop:	mov al, byte ptr PlayerRecord[bx]	;@507D
 	cmp al, 0	;@5081
-	je L508B	;@5083
+	je PrintPlayerName_Done	;@5083
 	call PrintChar	;@5085
 	inc bx	;@5088
 	jmp PrintPlayerName_Loop	;@5089
-L508B:	ret	;@508B
+PrintPlayerName_Done:	ret	;@508B
 ;------------------------------------------------------------------------------
 ; PrintNameStr: print string number AL (1-75) of the name table NameStrTbl (terrain,
 ; weapons, armour, spells, items, attributes, races, classes). AL = 0 would
@@ -324,18 +324,18 @@ PrintNameStr:	mov ah, 0	;@508C
 	mov di, 0	;@5090
 PrintNameStr_Scan:	cmp byte ptr cs:NameStrTbl[di], 0	;@5093
 	je PrintNameStr_EndStr	;@5099
-L509B:	inc di	;@509B
+PrintNameStr_SkipChar:	inc di	;@509B
 	jmp PrintNameStr_Scan	;@509C
 PrintNameStr_EndStr:	dec si		; at a 0: one string fewer to skip	;@509E
 	je PrintNameStr_Print	;@509F
-	jmp L509B	;@50A1
+	jmp PrintNameStr_SkipChar	;@50A1
 PrintNameStr_Print:	inc di	;@50A3
 	mov al, byte ptr cs:NameStrTbl[di]	;@50A4
 	cmp al, 0	;@50A9
-	je L50B2	;@50AB
+	je PrintNameStr_Done	;@50AB
 	call PrintChar	;@50AD
 	jmp PrintNameStr_Print	;@50B0
-L50B2:	ret	;@50B2
+PrintNameStr_Done:	ret	;@50B2
 ;------------------------------------------------------------------------------
 ; GetMapSquare: read the map byte at (LookX, LookY) from the 64x64 map buffer
 ; (pointer MapBufPtr): address = MapBufPtr + 64*LookY + LookX. The address is left
@@ -405,9 +405,9 @@ DrawStatusLines:	mov al, 28h	;@50F9
 	mov di, bx	;@5117
 	mov al, byte ptr HitPointsHi	;@5119
 	or al, al	;@511C
-	jne L5123	;@511E
+	jne DrawStatus_PrintHP	;@511E
 	call SetTextWarning		; below 100: warning colour	;@5120
-L5123:	call PrintBcdWord	;@5123
+DrawStatus_PrintHP:	call PrintBcdWord	;@5123
 	call SetTextNormal	;@5126
 	mov al, 1Eh	;@5129
 	mov byte ptr CursorCol, al	;@512B
@@ -419,9 +419,9 @@ L5123:	call PrintBcdWord	;@5123
 	mov di, bx	;@5142
 	mov al, byte ptr FoodHi	;@5144
 	or al, al	;@5147
-	jne L514E	;@5149
+	jne DrawStatus_PrintFood	;@5149
 	call SetTextWarning	;@514B
-L514E:	call PrintBcdWord	;@514E
+DrawStatus_PrintFood:	call PrintBcdWord	;@514E
 	call SetTextNormal	;@5151
 	mov al, 1Eh	;@5154
 	mov byte ptr CursorCol, al	;@5156

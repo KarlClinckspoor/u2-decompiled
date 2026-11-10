@@ -179,9 +179,9 @@ GetViewCells_Loop:	mov al, byte ptr PlotX	;@60B4
 	inc di	;@6138
 	mov bx, di	;@6139
 	cmp bl, 8	; 8 rows	;@613B
-	jae L6143	;@613E
+	jae GetViewCells_Done	;@613E
 	jmp GetViewCells_Loop	;@6140
-L6143:	ret	;@6143
+GetViewCells_Done:	ret	;@6143
 ;------------------------------------------------------------------------------
 ; DrawViewWalls: draw the walls. Clears the screen, draws the frame (depth 0 rectangle), then for
 ; d = ViewDepth = 0, 1, ...: if the cell ahead at depth d is a wall, draw its face (and a door
@@ -204,18 +204,18 @@ DrawWalls_Loop:	mov bh, 0	;@614F
 	call DrawDepthRect	; its face	;@615F
 	mov al, byte ptr ViewAheadCells[di]	;@6162
 	and al, 40h	; 40h: door?	;@6166
-	jne L616D	;@6168
+	jne DrawWalls_CheckSecret	;@6168
 	jmp DrawWalls_Done	;@616A
-L616D:	mov al, byte ptr ViewAheadCells[di]	;@616D
+DrawWalls_CheckSecret:	mov al, byte ptr ViewAheadCells[di]	;@616D
 	and al, 20h	; 20h too: secret door, looks like a wall	;@6171
-	je L6178	;@6173
+	je DrawWalls_FrontDoor	;@6173
 	jmp DrawWalls_Done	;@6175
-L6178:	call DrawFrontDoor	; door in it	;@6178
+DrawWalls_FrontDoor:	call DrawFrontDoor	; door in it	;@6178
 	mov al, byte ptr ViewDepth	;@617B
 	or al, al	; a door in the player's own cell: look on through it	;@617E
-	je L6185	;@6180
+	je DrawWalls_ThroughDoor	;@6180
 	jmp DrawWalls_Done	;@6182
-L6185:	inc byte ptr ViewDepth	;@6185
+DrawWalls_ThroughDoor:	inc byte ptr ViewDepth	;@6185
 	mov al, byte ptr ViewDepth	;@6189
 	cmp al, 8	; limit 8 on this path (7 below)	;@618C
 	jae DrawWalls_Done	;@618E
@@ -223,21 +223,21 @@ L6185:	inc byte ptr ViewDepth	;@6185
 ; Open cell: ladder down, ladder up or chest in it.
 DrawWalls_OpenCell:	mov al, byte ptr ViewAheadCells[di]	;@6192
 	and al, 20h	; 20h: ladder down	;@6196
-	je L619D	;@6198
+	je DrawWalls_CheckLadderUp	;@6198
 	call DrawLadderDown	;@619A
-L619D:	mov al, byte ptr ViewAheadCells[di]	;@619D
+DrawWalls_CheckLadderUp:	mov al, byte ptr ViewAheadCells[di]	;@619D
 	and al, 10h	; 10h: ladder up	;@61A1
-	je L61AB	;@61A3
+	je DrawWalls_CheckChest	;@61A3
 	call DrawLadderUp	;@61A5
 	jmp DrawWalls_LeftSide	;@61A8
-L61AB:	mov al, byte ptr ViewAheadCells[di]	;@61AB
+DrawWalls_CheckChest:	mov al, byte ptr ViewAheadCells[di]	;@61AB
 	and al, 40h	; 40h: chest	;@61AF
 	je DrawWalls_LeftSide	;@61B1
 	call DrawChest	;@61B3
 ; Left side: wall (and door in it) or opening.
 DrawWalls_LeftSide:	mov al, byte ptr ViewLeftCells[di]	;@61B6
 	or al, al	; left wall?	;@61BA
-	jns L61D7	;@61BC
+	jns DrawWalls_LeftOpen	;@61BC
 	call DrawLeftWall	; its edges	;@61BE
 	mov al, byte ptr ViewLeftCells[di]	;@61C1
 	and al, 40h	;@61C5
@@ -247,11 +247,11 @@ DrawWalls_LeftSide:	mov al, byte ptr ViewLeftCells[di]	;@61B6
 	jne DrawWalls_RightSide	;@61CF
 	call DrawLeftDoor	; door (40h without 20h)	;@61D1
 	jmp DrawWalls_RightSide	;@61D4
-L61D7:	call DrawLeftOpening	; left side open	;@61D7
+DrawWalls_LeftOpen:	call DrawLeftOpening	; left side open	;@61D7
 ; Right side.
 DrawWalls_RightSide:	mov al, byte ptr ViewRightCells[di]	;@61DA
 	or al, al	; right wall?	;@61DE
-	jns L61FB	;@61E0
+	jns DrawWalls_RightOpen	;@61E0
 	call DrawRightWall	;@61E2
 	mov al, byte ptr ViewRightCells[di]	;@61E5
 	and al, 40h	;@61E9
@@ -261,7 +261,7 @@ DrawWalls_RightSide:	mov al, byte ptr ViewRightCells[di]	;@61DA
 	jne DrawWalls_Next	;@61F3
 	call DrawRightDoor	;@61F5
 	jmp DrawWalls_Next	;@61F8
-L61FB:	call DrawRightOpening	; right side open	;@61FB
+DrawWalls_RightOpen:	call DrawRightOpening	; right side open	;@61FB
 DrawWalls_Next:	inc byte ptr ViewDepth	;@61FE
 	mov al, byte ptr ViewDepth	;@6202
 	cmp al, 7	; at most depth 6	;@6205
@@ -812,31 +812,31 @@ DrawViewLine_Setup:	stc	;@67C7
 	sbb al, byte ptr PlotX	;@67CC
 	cmc	;@67D0
 	mov byte ptr LineDX, al	; x1-x0, CF = no borrow (6502 SBC)	;@67D1
-	jb L67E7	;@67D4
+	jb DrawViewLine_XPlus	;@67D4
 	xor al, 0FFh	;@67D6
 	mov byte ptr LineDX, al	;@67D8
 	inc byte ptr LineDX	; negate: |dx|	;@67DB
 	mov al, 0FFh	; x step -1	;@67DF
 	mov byte ptr LineStepX, al	;@67E1
-	jmp L67EC	;@67E4
-L67E7:	mov al, 1	; x step +1	;@67E7
+	jmp DrawViewLine_DY	;@67E4
+DrawViewLine_XPlus:	mov al, 1	; x step +1	;@67E7
 	mov byte ptr LineStepX, al	;@67E9
-L67EC:	stc	;@67EC
+DrawViewLine_DY:	stc	;@67EC
 	mov al, byte ptr LineEndY	;@67ED
 	cmc	;@67F0
 	sbb al, byte ptr PlotY	;@67F1
 	cmc	;@67F5
 	mov byte ptr LineDY, al	; y1-y0	;@67F6
-	jb L680C	;@67F9
+	jb DrawViewLine_YPlus	;@67F9
 	xor al, 0FFh	;@67FB
 	mov byte ptr LineDY, al	;@67FD
 	inc byte ptr LineDY	; negate: |dy|	;@6800
 	mov al, 0FFh	; y step -1	;@6804
 	mov byte ptr LineStepY, al	;@6806
-	jmp L6811	;@6809
-L680C:	mov al, 1	; y step +1	;@680C
+	jmp DrawViewLine_PickMajor	;@6809
+DrawViewLine_YPlus:	mov al, 1	; y step +1	;@680C
 	mov byte ptr LineStepY, al	;@680E
-L6811:	mov al, byte ptr LineDX	;@6811
+DrawViewLine_PickMajor:	mov al, byte ptr LineDX	;@6811
 	cmp al, byte ptr LineDY	;@6814
 	jae DrawViewLine_XMajor	;@6818
 	jmp DrawViewLine_YMajor	;@681A
@@ -854,13 +854,13 @@ DrawViewLine_XLoop:	clc	;@6829
 	cmc	;@6835
 	sbb al, byte ptr LineDX	; error - |dx|: no borrow = overflow	;@6836
 	cmc	;@683A
-	jae L684B	;@683B
+	jae DrawViewLine_StepX	;@683B
 	mov byte ptr LineErr, al	;@683D
 	clc	;@6840
 	mov al, byte ptr PlotY	;@6841
 	adc al, byte ptr LineStepY	;@6844
 	mov byte ptr PlotY, al	;@6848
-L684B:	clc	;@684B
+DrawViewLine_StepX:	clc	;@684B
 	mov al, byte ptr PlotX	;@684C
 	adc al, byte ptr LineStepX	;@684F
 	mov byte ptr PlotX, al	;@6853
@@ -882,13 +882,13 @@ DrawViewLine_YLoop:	clc	;@686C
 	cmc	;@6878
 	sbb al, byte ptr LineDY	; error - |dy|: no borrow = overflow	;@6879
 	cmc	;@687D
-	jae L688E	;@687E
+	jae DrawViewLine_StepY	;@687E
 	mov byte ptr LineErr, al	;@6880
 	clc	;@6883
 	mov al, byte ptr PlotX	;@6884
 	adc al, byte ptr LineStepX	;@6887
 	mov byte ptr PlotX, al	;@688B
-L688E:	clc	;@688E
+DrawViewLine_StepY:	clc	;@688E
 	mov al, byte ptr PlotY	;@688F
 	adc al, byte ptr LineStepY	;@6892
 	mov byte ptr PlotY, al	;@6896
@@ -956,9 +956,9 @@ DrawViewMonster:	nop	;@68ED
 DrawMonster_NextDepth:	inc di	;@68F8
 	mov bx, di	;@68F9
 	cmp bl, byte ptr ViewDepth	;@68FB
-	jb L6902	;@68FF
+	jb DrawMonster_Check	;@68FF
 	ret	;@6901
-L6902:	mov ah, byte ptr ViewMonsters[di]	;@6902
+DrawMonster_Check:	mov ah, byte ptr ViewMonsters[di]	;@6902
 	or ah, ah	; monster at depth d?	;@6906
 	je DrawMonster_NextDepth	;@6908
 	cmp di, 1	; next to the player: its own shape	;@690A
@@ -984,9 +984,9 @@ DrawMonster_Loop:	mov bh, 0	;@693A
 	mov bx, word ptr ShapePtr	;@6940
 	mov al, byte ptr [bx+si]	;@6944
 	or al, al	; X = 0: end of the shape, done	;@6946
-	jne L694B	;@6948
+	jne DrawMonster_Block	;@6948
 	ret	;@694A
-L694B:	mov byte ptr WorkX, al	;@694B
+DrawMonster_Block:	mov byte ptr WorkX, al	;@694B
 	inc word ptr ShapePtr	;@694E
 	mov bx, word ptr ShapePtr	;@6952
 	mov al, byte ptr [bx+si]	;@6956

@@ -168,9 +168,9 @@ MinaxCurse:	nop	;@0F8E
 	das	;@0FC2
 	cmc	;@0FC3
 	mov byte ptr HitPointsHi, al	;@0FC4
-	jb L0FCC	;@0FC7
+	jb MinaxCurse_Done	;@0FC7
 	jmp PlayerDies	; the player is dead	;@0FC9
-L0FCC:	ret	;@0FCC
+MinaxCurse_Done:	ret	;@0FCC
 
 ;------------------------------------------------------------------------------
 ; ThiefStealItem: a thief (tile FCh) is next to the player (MAIN 0B5F): one time in 4 it
@@ -307,29 +307,29 @@ TownTurn_WanderStep:	nop	;@10CE
 	and al, 3Fh	;@10E0
 	mov byte ptr LookX, al	; new x	;@10E2
 	cmp al, 4	;@10E5
-	jae L10EC	;@10E7
+	jae TownTurn_CheckXMax	;@10E7
 	jmp TownTurnNextMonster	;@10E9
-L10EC:	cmp al, 3Ch	;@10EC
-	jb L10F3	;@10EE
+TownTurn_CheckXMax:	cmp al, 3Ch	;@10EC
+	jb TownTurn_CheckPlayerX	;@10EE
 	jmp TownTurnNextMonster	;@10F0
-L10F3:	cmp al, byte ptr PlayerX	; the player's column	;@10F3
-	jne L10FC	;@10F7
+TownTurn_CheckPlayerX:	cmp al, byte ptr PlayerX	; the player's column	;@10F3
+	jne TownTurn_NewY	;@10F7
 	jmp TownTurnNextMonster	;@10F9
-L10FC:	clc	;@10FC
+TownTurn_NewY:	clc	;@10FC
 	mov al, byte ptr MonsterY[di]	;@10FD
 	adc al, byte ptr DeltaY	;@1101
 	and al, 3Fh	;@1105
 	mov byte ptr LookY, al	; new y	;@1107
 	cmp al, 4	;@110A
-	jae L1111	;@110C
+	jae TownTurn_CheckYMax	;@110C
 	jmp TownTurnNextMonster	;@110E
-L1111:	cmp al, 3Ch	;@1111
-	jb L1118	;@1113
+TownTurn_CheckYMax:	cmp al, 3Ch	;@1111
+	jb TownTurn_CheckPlayerY	;@1113
 	jmp TownTurnNextMonster	;@1115
-L1118:	cmp al, byte ptr PlayerY	; the player's row	;@1118
-	jne L1121	;@111C
+TownTurn_CheckPlayerY:	cmp al, byte ptr PlayerY	; the player's row	;@1118
+	jne TownTurn_CheckTile	;@111C
 	jmp TownTurnNextMonster	;@111E
-L1121:	call GetMapSquare	; AL = map tile there	;@1121
+TownTurn_CheckTile:	call GetMapSquare	; AL = map tile there	;@1121
 	cmp al, 70h	; town floor	;@1124
 	je TownTurn_WanderMove	;@1126
 	cmp al, 8	; grass	;@1128
@@ -347,9 +347,9 @@ TownTurn_WanderMove:	mov bh, 0	;@112F
 ;------------------------------------------------------------------------------
 AlertTownGuards:	mov al, byte ptr MapType	;@113A
 	or al, al	;@113D
-	jne L1142	;@113F
+	jne AlertTownGuards_InTown	;@113F
 	ret	;@1141
-L1142:	mov bh, 0	;@1142
+AlertTownGuards_InTown:	mov bh, 0	;@1142
 	mov bl, 7	;@1144
 	mov di, bx	;@1146
 	mov al, 1	; hostile	;@1148
@@ -420,12 +420,12 @@ DungeonTurn_TryX:	nop	; try the step in x	;@11B5
 	mov byte ptr LookY, al	;@11C9
 	mov al, byte ptr LookX	;@11CC
 	cmp al, byte ptr PlayerX	;@11CF
-	jne L11E1	;@11D3
+	jne DungeonTurn_CheckXCell	;@11D3
 	mov al, byte ptr LookY	;@11D5
 	cmp al, byte ptr PlayerY	;@11D8
-	jne L11E1	;@11DC
+	jne DungeonTurn_CheckXCell	;@11DC
 	jmp DungeonMonsterAttack	; onto the player: attack	;@11DE
-L11E1:	nop	;@11E1
+DungeonTurn_CheckXCell:	nop	;@11E1
 	call ReadCellIfSameLevel	; AL = target cell, or FFh if not on the player's level	;@11E2
 	je DungeonTurn_CheckCell	; empty	;@11E5
 	cmp al, 0FFh	;@11E7
@@ -435,7 +435,7 @@ L11E1:	nop	;@11E1
 DungeonTurn_TryY:	nop	; try the step in y	;@11EF
 	mov al, byte ptr DeltaY	;@11F0
 	or al, al	;@11F3
-	je L1229	;@11F5
+	je DungeonTurn_Blocked	;@11F5
 	clc	;@11F7
 	adc al, byte ptr MonsterY[di]	;@11F8
 	mov byte ptr LookY, al	;@11FC
@@ -443,19 +443,19 @@ DungeonTurn_TryY:	nop	; try the step in y	;@11EF
 	mov byte ptr LookX, al	;@1203
 	mov al, byte ptr LookX	;@1206
 	cmp al, byte ptr PlayerX	;@1209
-	jne L121B	;@120D
+	jne DungeonTurn_CheckYCell	;@120D
 	mov al, byte ptr LookY	;@120F
 	cmp al, byte ptr PlayerY	;@1212
-	jne L121B	;@1216
+	jne DungeonTurn_CheckYCell	;@1216
 	jmp DungeonMonsterAttack	; onto the player: attack	;@1218
-L121B:	nop	;@121B
+DungeonTurn_CheckYCell:	nop	;@121B
 	call ReadCellIfSameLevel	;@121C
 	je DungeonTurn_CheckCell	;@121F
 	cmp al, 0FFh	;@1221
-	je L1229	;@1223
+	je DungeonTurn_Blocked	;@1223
 	and al, 7Fh	;@1225
 	jne DungeonTurn_CheckCell	;@1227
-L1229:	jmp DungeonTurn_Next	; no step possible	;@1229
+DungeonTurn_Blocked:	jmp DungeonTurn_Next	; no step possible	;@1229
 DungeonTurn_CheckCell:	nop	;@122C
 	call ReadMonsterCell	; the target cell again	;@122D
 	and al, 7	; a monster there?	;@1230
@@ -536,9 +536,9 @@ EatFood:	mov byte ptr Temp20, al	;@12DB
 	das	;@12FD
 	cmc	;@12FE
 	mov byte ptr FoodHi, al	;@12FF
-	jb L1307	;@1302
+	jb EatFood_Done	;@1302
 	jmp PlayerDies	; starved: the player is dead	;@1304
-L1307:	ret	;@1307
+EatFood_Done:	ret	;@1307
 
 ;------------------------------------------------------------------------------
 ; DungeonMonsterAttack: dungeon monster Temp1F attacks the player (its step would land on
@@ -564,12 +564,12 @@ DungeonMonsterAttack:	nop	;@1308
 DgnAttack_Special:	nop	;@1324
 	mov al, byte ptr MonsterTile[di]	; monster kind 1-7	;@1325
 	cmp al, 2	;@1329
-	jne L1330	;@132B
+	jne DgnAttack_TryGremlin	;@132B
 	jmp DgnAttack_BlowTorch	;@132D
-L1330:	cmp al, 5	;@1330
-	jne L1337	;@1332
+DgnAttack_TryGremlin:	cmp al, 5	;@1330
+	jne DgnAttack_TryBalron	;@1332
 	jmp DgnAttack_Gremlin	;@1334
-L1337:	cmp al, 7	;@1337
+DgnAttack_TryBalron:	cmp al, 7	;@1337
 	jne DgnAttack_Blow	;@1339
 	jmp DgnAttack_StrongMagic	;@133B
 DgnAttack_Blow:	nop	;@133E
@@ -614,21 +614,21 @@ DgnAttack_Hit:	nop	;@1367
 	das	;@139D
 	cmc	;@139E
 	mov byte ptr HitPointsHi, al	;@139F
-	jb L13A7	;@13A2
+	jb DgnAttack_Survived	;@13A2
 	jmp PlayerDies	; the player is dead	;@13A4
-L13A7:	nop	;@13A7
+DgnAttack_Survived:	nop	;@13A7
 	jmp DungeonTurn_Next	;@13A8
 ; Kind 2, the ghost: puts out the torch.
 DgnAttack_BlowTorch:	mov al, byte ptr LightTurns	; torch turns left	;@13AB
 	or al, al	;@13AE
-	je L13D7	;@13B0
+	je DgnAttack_TorchDone	;@13B0
 	call PrintInline	;@13B2
 	db 59h,4Fh,55h,52h,20h,54h,4Fh,52h,43h,48h,20h,49h,53h,20h,42h,4Ch	; "YOUR TORCH IS BLOWN OUT!"	;@13B5
 	db 4Fh,57h,4Eh,20h,4Fh,55h,54h,21h,8Dh,0h	;@13C5
 	call Beep	; beep	;@13CF
 	mov al, 0	;@13D2
 	mov byte ptr LightTurns, al	;@13D4
-L13D7:	jmp DungeonTurn_Next	;@13D7
+DgnAttack_TorchDone:	jmp DungeonTurn_Next	;@13D7
 ; Kind 5, the gremlin: -100 food.
 DgnAttack_Gremlin:	call PrintInline	;@13DA
 	db 41h,20h,47h,52h,45h,4Dh,4Ch,49h,4Eh,20h,53h,54h,4Fh,4Ch,45h,20h	; "A GREMLIN STOLE SOME FOOD!"	;@13DD
@@ -641,9 +641,9 @@ DgnAttack_Gremlin:	call PrintInline	;@13DA
 	das	;@1403
 	cmc	;@1404
 	mov byte ptr FoodHi, al	;@1405
-	jae L140D	; below zero	;@1408
+	jae DgnAttack_FoodGone	; below zero	;@1408
 	jmp DungeonTurn_Next	;@140A
-L140D:	jmp PlayerDies	; the player is dead (a gremlin can kill you)	;@140D
+DgnAttack_FoodGone:	jmp PlayerDies	; the player is dead (a gremlin can kill you)	;@140D
 ; Kind 7, the balron: sleep for 0-7 turns, no save.
 DgnAttack_StrongMagic:	nop	;@1410
 	call PrintInline	;@1411
@@ -749,12 +749,12 @@ SpawnDgnMonsters_Try:	nop	;@14A0
 	mov di, bx	;@14E8
 	and al, 7	;@14EA
 	cmp al, 7	;@14EC
-	je L14FA	;@14EE
+	je SpawnDgnMonsters_Reject	;@14EE
 	add al, al	;@14F0
 	cmp al, byte ptr MonsterUnder[di]	; 2(k-1) <= level?	;@14F2
 	je SpawnDgnMonsters_Put	;@14F6
 	jb SpawnDgnMonsters_Put	;@14F8
-L14FA:	jmp SpawnDgnMonsters_Next	;@14FA
+SpawnDgnMonsters_Reject:	jmp SpawnDgnMonsters_Next	;@14FA
 SpawnDgnMonsters_Put:	nop	;@14FC
 	clc	;@14FD
 	rcr al, 1	;@14FE

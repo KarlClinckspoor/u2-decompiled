@@ -228,9 +228,9 @@ Menu_WaitKey:	call ReadKey	; wait for a key: AH = FFh when one was read	;@038C
 	jne Menu_WaitKey	;@0392
 	call PrintChar	; echo it (AL is upper case)	;@0394
 	cmp al, 44h	; 'D'	;@0397
-	jne L039E	;@0399
+	jne Menu_TryPlay	;@0399
 	jmp DemoShow	;@039B
-L039E:	cmp al, 50h	; 'P'	;@039E
+Menu_TryPlay:	cmp al, 50h	; 'P'	;@039E
 	je Menu_Play	;@03A0
 	cmp al, 43h	; 'C'	;@03A2
 	je Menu_Create	;@03A4
@@ -394,10 +394,10 @@ WaitForEscape:	mov bx, 0Ah	; delay table entry 5 (byte offset 0Ah)	;@0696
 	call SpeedDelay	;@0699
 	call ReadKey	;@069C
 	cmp ax, 0FF1Bh	; Escape?	;@069F
-	jne L06A8	;@06A2
+	jne WaitForEscape_Next	;@06A2
 	pop ax	; drop the return address into TitleWait/DemoWait	;@06A4
 	jmp MainMenu	;@06A5
-L06A8:	dec dx	;@06A8
+WaitForEscape_Next:	dec dx	;@06A8
 	jne WaitForEscape	;@06A9
 	ret	;@06AB
 
@@ -443,10 +443,10 @@ CalcDelayTbl_Loop:	mov ax, word ptr SpeedSetting	;@06F0
 	sub ax, word ptr SpeedMin	;@06F3
 	jae CalcDelayTbl_Scale	;@06F7
 	mov ax, 0	; slower than the base: no delay	;@06F9
-	jmp L0707	;@06FC
+	jmp CalcDelayTbl_Store	;@06FC
 CalcDelayTbl_Scale:	mul word ptr DelayFactorTbl[bx]	;@06FF
 	div word ptr SpeedMin	;@0703
-L0707:	mov word ptr DelayTbl[bx], ax	;@0707
+CalcDelayTbl_Store:	mov word ptr DelayTbl[bx], ax	;@0707
 	sub bx, 2	;@070B
 	jae CalcDelayTbl_Loop	;@070E
 	ret	;@0710

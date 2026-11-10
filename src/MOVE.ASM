@@ -242,15 +242,15 @@ CheckStep_Paralyzed:	mov al, byte ptr LegsParalyzed	; legs paralyzed (turns left
 ; By transport.
 CheckStep_Transport:	mov al, byte ptr PlayerTile	; the player's tile = transport	;@253B
 	cmp al, 28h	; rocket	;@253E
-	jne L2545	;@2540
+	jne CheckStep_TryPlane	;@2540
 	jmp StepRocket	;@2542
-L2545:	cmp al, 26h	; plane	;@2545
-	jne L254C	;@2547
+CheckStep_TryPlane:	cmp al, 26h	; plane	;@2545
+	jne CheckStep_TryFrigate	;@2547
 	jmp StepPlane	;@2549
-L254C:	cmp al, 24h	; frigate	;@254C
-	jne L2553	;@254E
+CheckStep_TryFrigate:	cmp al, 24h	; frigate	;@254C
+	jne CheckStep_TryHorse	;@254E
 	jmp StepFrigate	;@2550
-L2553:	cmp al, 22h	; horse	;@2553
+CheckStep_TryHorse:	cmp al, 22h	; horse	;@2553
 	jne StepOnFoot	; anything else: on foot	;@2555
 ; Horse: a step sound and the same delay as on foot, then StepHorse (which walks once more).
 	call PlayStepSound	; step sound	;@2557
@@ -260,8 +260,8 @@ L2553:	cmp al, 22h	; horse	;@2553
 HorseStep_Delay:	mov bh, 0	; speed-dependent delay: 255 x (32 loops + SpeedDelay delay 10h)	;@2560
 	mov bl, 20h	;@2562
 	mov si, bx	;@2564
-L2566:	dec si	;@2566
-	jne L2566	;@2567
+HorseStep_BusyLoop:	dec si	;@2566
+	jne HorseStep_BusyLoop	;@2567
 	mov bx, 10h	;@2569
 	call SpeedDelay	;@256C
 	dec di	;@256F
@@ -283,8 +283,8 @@ StepOnFoot:	call PlayStepSound	; step sound	;@2575
 StepOnFoot_Delay:	mov bh, 0	; speed-dependent delay, as above	;@257E
 	mov bl, 20h	;@2580
 	mov si, bx	;@2582
-L2584:	dec si	;@2584
-	jne L2584	;@2585
+StepOnFoot_BusyLoop:	dec si	;@2584
+	jne StepOnFoot_BusyLoop	;@2585
 	mov bx, 10h	;@2587
 	call SpeedDelay	;@258A
 	dec di	;@258D
@@ -316,9 +316,9 @@ L2584:	dec si	;@2584
 StepOnFoot_Terrain:	mov al, byte ptr Temp29	;@25C0
 	and al, 7Fh	;@25C3
 	cmp al, 60h	; time door	;@25C5
-	jne L25CC	;@25C7
+	jne StepOnFoot_TryWater	;@25C7
 	jmp EnterTimeDoor	;@25C9
-L25CC:	cmp al, 0	; water	;@25CC
+StepOnFoot_TryWater:	cmp al, 0	; water	;@25CC
 	je CheckStep_Refuse	;@25CE
 	cmp al, 8	; mountains	;@25D0
 	je CheckStep_Refuse	;@25D2
@@ -367,7 +367,7 @@ StepFrigate:	mov al, byte ptr Temp29	;@2619
 	jmp CheckStep_Refuse	;@2624
 
 ;------------------------------------------------------------------------------
-; StepHorse: the horse step (after its delay at L2553) and, called, the plane step:
+; StepHorse: the horse step (after its delay at HorseStep_Delay) and, called, the plane step:
 ; 0.19 food, then a whole step on foot (StepOnFoot: delay, another 0.19 food, the
 ; walking terrain test), and in addition no marsh (2). The test for the time door
 ; (60h) after it is never true: StepOnFoot has already gone through the door (EnterTimeDoor).
@@ -394,9 +394,9 @@ StepHorse:	nop	;@2626
 	das	;@2644
 	cmc	;@2645
 	mov byte ptr FoodHi, al	;@2646
-	jb L264E	;@2649
+	jb StepHorse_Walk	;@2649
 	jmp DieOfStarvation	; out of food: dead	;@264B
-L264E:	call StepOnFoot	; a step on foot	;@264E
+StepHorse_Walk:	call StepOnFoot	; a step on foot	;@264E
 	cmp al, 0FFh	;@2651
 	je CheckStep_Refuse	;@2653
 	mov al, byte ptr Temp29	;@2655

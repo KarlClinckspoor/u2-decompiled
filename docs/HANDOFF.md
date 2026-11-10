@@ -12,7 +12,7 @@ MATCHING.md) is the model for conventions.
 `src/u2.lnk`) with `python3 tools/build.py`: MASM 4.00 (or MASM 3.00: `ASM=MASM3`, same file)
 + LINK 3.05 in one DOSBox run, then `tools/postlink.py` adds the envelope remains from gamedata.
 
-**The source is relocatable**: every address in it is a symbol (`Lxxxx` in CODE, `D_xxxx` in
+**The source is relocatable**: every address in it is a symbol (named labels in CODE and
 DATA, BSS buffers and the stack as `D_END+n`), so code and data can be inserted, removed or moved.
 `tools/shift.py` proves it statically (padding inserted at the start of the code, or of any
 module, and of the data: every one of the 4585 symbolic lines moves by the right amount,
@@ -27,8 +27,8 @@ source of truth, edited by hand. Unlike U1 there is no C at all: the whole game 
 **Named and commented**: every module has an overview, every routine a header (what it does,
 in, out, registers), and inline comments; 1032 symbols carry real names (`PrintInline`,
 `MainLoop`, `CmdAttack`, `PlayerX`, `HitPointsHi`, `MonsterHP`, `TilePtrTbl`, ...), following
-docs/NAMING.md. 188 local branch targets keep their `Lxxxx` names on purpose (plain "next part"
-labels); `tools/syms.py` maps any name to its original address and back.
+docs/NAMING.md; since then the last 161 address labels got names too, so no `Lxxxx` label is
+left. `tools/syms.py` maps any name to its original address and back.
 
 ## The executable
 
@@ -269,8 +269,8 @@ inside one module and add the EXTRN/PUBLIC lines.
 1. **Finish the readable pass**. Done: VIEW3D's coordinate table is 16 named rows (ViewXL ...
    ViewChestTopY, read as `ViewXL[di+2]`); every monster tile and dungeon kind is identified
    (docs/FINDINGS.md, "Who the monsters are"; `tools/sprites.py` draws them). Left: the few
-   open questions at the end of FINDINGS; name the remaining 161 `Lxxxx` labels where a name
-   helps; check the comments against play where they say "?".
+   open questions at the end of FINDINGS; check the comments against play where they say
+   "?". All labels are named (the last 161 by three parallel agents, merged in one rename).
 2. Try the findings in play. Done in DOSBox: the Ctrl-Right hang, the character-generation race
    bug, the pub's fixed tip, the Ready and Wear BCD limits, the class/race bonuses, the ladder
    spells (they check the square behind the player; Up Ladder can land you inside a wall).

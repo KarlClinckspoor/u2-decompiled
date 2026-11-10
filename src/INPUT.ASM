@@ -170,9 +170,9 @@ CalcPrice_FibLoop:	clc	;@20EB
 ;------------------------------------------------------------------------------
 MonsterStepToward:	mov al, byte ptr MonsterHP[di]	; monster hit points	;@2122
 	cmp al, 10h	;@2126
-	jae L212E	;@2128
+	jae MonsterStep_TryDiag	;@2128
 	inc byte ptr MonsterHP[di]	; heal 1	;@212A
-L212E:	clc	;@212E
+MonsterStep_TryDiag:	clc	;@212E
 	mov al, byte ptr MonsterX[di]	;@212F
 	adc al, byte ptr DeltaX	;@2133
 	and al, 3Fh	;@2137
@@ -208,9 +208,9 @@ MonsterStep_TryX:	clc	; then (x + dx, y)	;@216E
 ; Done with this monster: back to the loop that called.
 MonsterStep_Done:	mov al, byte ptr MapType	;@218B
 	cmp al, 0	;@218E
-	je L2195	;@2190
+	je MonsterStep_Outdoors	;@2190
 	jmp TownTurnNextMonster	; town loop (EVENTS)	;@2192
-L2195:	nop	;@2195
+MonsterStep_Outdoors:	nop	;@2195
 	jmp OutdoorMonsters_Next	; surface loop (MAIN)	;@2196
 
 ;------------------------------------------------------------------------------
@@ -312,9 +312,9 @@ MoveMonsterToTarget_Do:	mov al, byte ptr LookX	;@2216
 	mov byte ptr [bx+si], al	; put the monster on the map	;@2266
 	mov al, byte ptr MapType	;@2268
 	cmp al, 0	;@226B
-	je L2272	;@226D
+	je MoveMonsterToTarget_Outdoors	;@226D
 	jmp TownTurnNextMonster	; town loop (EVENTS)	;@226F
-L2272:	jmp OutdoorMonsters_Next	; surface loop (MAIN)	;@2272
+MoveMonsterToTarget_Outdoors:	jmp OutdoorMonsters_Next	; surface loop (MAIN)	;@2272
 
 ;------------------------------------------------------------------------------
 ; IllegalCommand: "-ILLEGAL COMMAND!" for keys that are not commands (MAIN 09FF, 0A1C),

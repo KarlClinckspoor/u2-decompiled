@@ -251,7 +251,7 @@ CreateChar_AskRace:	mov bh, 0	;@57AD
 	call WaitKey	;@57BC
 	mov byte ptr PlayerRace, al	;@57BF
 	cmp al, 31h	; '1' human	;@57C2
-	jne L57F0	;@57C4
+	jne CreateChar_Elf	;@57C4
 	call PrintInline	; print "HUMAN"	;@57C6
 	db 48h,55h,4Dh,41h,4Eh,0h	;@57C9
 	mov al, byte ptr Intelligence	;@57CF
@@ -268,8 +268,8 @@ CreateChar_AskRace:	mov bh, 0	;@57AD
 	mov al, byte ptr Intelligence	;@57E7
 	call PrintBcdByte	;@57EA
 	jmp CreateChar_AskType	;@57ED
-L57F0:	cmp al, 32h	; '2' elf	;@57F0
-	jne L581C	;@57F2
+CreateChar_Elf:	cmp al, 32h	; '2' elf	;@57F0
+	jne CreateChar_Dwarf	;@57F2
 	call PrintInline	; print "ELF"	;@57F4
 	db 45h,4Ch,46h,0h	;@57F7
 	mov al, byte ptr Agility	;@57FB
@@ -286,8 +286,8 @@ L57F0:	cmp al, 32h	; '2' elf	;@57F0
 	mov al, byte ptr Agility	;@5813
 	call PrintBcdByte	;@5816
 	jmp CreateChar_AskType	;@5819
-L581C:	cmp al, 33h	; '3' dwarf	;@581C
-	jne L584A	;@581E
+CreateChar_Dwarf:	cmp al, 33h	; '3' dwarf	;@581C
+	jne CreateChar_IsHobbit	;@581E
 	call PrintInline	; print "DWARF"	;@5820
 	db 44h,57h,41h,52h,46h,0h	;@5823
 	mov al, byte ptr Strength	;@5829
@@ -304,7 +304,7 @@ L581C:	cmp al, 33h	; '3' dwarf	;@581C
 	mov al, byte ptr Strength	;@5841
 	call PrintBcdByte	;@5844
 	jmp CreateChar_AskType	;@5847
-L584A:	cmp al, 34h	; '4' hobbit	;@584A
+CreateChar_IsHobbit:	cmp al, 34h	; '4' hobbit	;@584A
 	je CreateChar_Hobbit	;@584C
 	jmp CreateChar_AskRace	; any other key: ask again	;@584E
 CreateChar_Hobbit:	call PrintInline	; print "HOBBIT"	;@5851
@@ -340,7 +340,7 @@ CreateChar_AskType:	clc	;@5879
 	call WaitKey	;@5891
 	mov byte ptr PlayerClass, al	;@5894
 	cmp al, 31h	; '1' fighter	;@5897
-	jne L58C7	;@5899
+	jne CreateChar_Cleric	;@5899
 	call PrintInline	; print "FIGHTER"	;@589B
 	db 46h,49h,47h,48h,54h,45h,52h,0h	;@589E
 	mov al, byte ptr Strength	;@58A6
@@ -357,8 +357,8 @@ CreateChar_AskType:	clc	;@5879
 	mov al, byte ptr Strength	;@58BE
 	call PrintBcdByte	;@58C1
 	jmp CreateChar_TypeDone	;@58C4
-L58C7:	cmp al, 32h	; '2' cleric	;@58C7
-	jne L58F6	;@58C9
+CreateChar_Cleric:	cmp al, 32h	; '2' cleric	;@58C7
+	jne CreateChar_Wizard	;@58C9
 	call PrintInline	; print "CLERIC"	;@58CB
 	db 43h,4Ch,45h,52h,49h,43h,0h	;@58CE
 	mov al, byte ptr Wisdom	;@58D5
@@ -375,8 +375,8 @@ L58C7:	cmp al, 32h	; '2' cleric	;@58C7
 	mov al, byte ptr Wisdom	;@58ED
 	call PrintBcdByte	;@58F0
 	jmp CreateChar_TypeDone	;@58F3
-L58F6:	cmp al, 33h	; '3' wizard	;@58F6
-	jne L5925	;@58F8
+CreateChar_Wizard:	cmp al, 33h	; '3' wizard	;@58F6
+	jne CreateChar_IsThief	;@58F8
 	call PrintInline	; print "WIZARD"	;@58FA
 	db 57h,49h,5Ah,41h,52h,44h,0h	;@58FD
 	mov al, byte ptr Intelligence	;@5904
@@ -393,7 +393,7 @@ L58F6:	cmp al, 33h	; '3' wizard	;@58F6
 	mov al, byte ptr Intelligence	;@591C
 	call PrintBcdByte	;@591F
 	jmp CreateChar_TypeDone	;@5922
-L5925:	cmp al, 34h	; '4' thief	;@5925
+CreateChar_IsThief:	cmp al, 34h	; '4' thief	;@5925
 	je CreateChar_Thief	;@5927
 	jmp CreateChar_AskType	; any other key: ask again (via the race conversion!)	;@5929
 CreateChar_Thief:	call PrintInline	; print "THIEF"	;@592C

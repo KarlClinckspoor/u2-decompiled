@@ -186,33 +186,33 @@ Attack_Killed:	mov al, byte ptr MonsterX[di]	;@2CA4
 	mov byte ptr [bx+si], al	; restore the tile under the monster	;@2CC3
 	mov al, byte ptr MonsterTile[di]	;@2CC5
 	cmp al, 40h	;@2CC9
-	jne L2CD3	;@2CCB
+	jne Attack_TryGuard	;@2CCB
 	call MinaxDead	; Minax is dead: the end game	;@2CCD
 	jmp EndCommand	;@2CD0
-L2CD3:	nop	;@2CD3
+Attack_TryGuard:	nop	;@2CD3
 	cmp al, 60h	;@2CD4
-	jne L2CE5	;@2CD6
+	jne Attack_TryThief	;@2CD6
 	clc	;@2CD8
 	mov al, byte ptr Keys	;@2CD9
 	adc al, 2	;@2CDC
 	daa	; a guard (tile 60h): Keys + 2 (BCD)	;@2CDE
 	mov byte ptr Keys, al	;@2CDF
 	jmp Attack_ClearMonster	;@2CE2
-L2CE5:	cmp al, 0FCh	;@2CE5
-	jne L2D22	;@2CE7
+Attack_TryThief:	cmp al, 0FCh	;@2CE5
+	jne Attack_TryFighter	;@2CE7
 	mov bx, di	;@2CE9
 	mov byte ptr Temp1F, bl	;@2CEB
 	call Random	;@2CEF
 	cmp al, 40h	;@2CF2
-	jae L2D00	;@2CF4
+	jae Attack_ThiefItem	;@2CF4
 	clc	;@2CF6
 	mov al, byte ptr Tools	;@2CF7
 	adc al, 1	;@2CFA
 	daa	; tile FCh: 1 in 4, Tools + 1	;@2CFC
 	mov byte ptr Tools, al	;@2CFD
-L2D00:	call Random	;@2D00
+Attack_ThiefItem:	call Random	;@2D00
 	and al, 0Fh	;@2D03
-	je L2D17	;@2D05
+	je Attack_ThiefDone	;@2D05
 	mov ah, 0	;@2D07
 	mov di, ax	;@2D09
 	clc	;@2D0B
@@ -220,23 +220,23 @@ L2D00:	call Random	;@2D00
 	adc al, 1	;@2D10
 	daa	; and a random item 1-15 (15/16)	;@2D12
 	mov byte ptr ItemCounts[di], al	;@2D13
-L2D17:	mov bh, 0	;@2D17
+Attack_ThiefDone:	mov bh, 0	;@2D17
 	mov bl, byte ptr Temp1F	;@2D19
 	mov di, bx	;@2D1D
 	jmp Attack_ClearMonster	;@2D1F
-L2D22:	cmp al, 0F0h	;@2D22
-	jne L2D60	;@2D24
+Attack_TryFighter:	cmp al, 0F0h	;@2D22
+	jne Attack_TryWizard	;@2D24
 	mov bx, di	;@2D26
 	mov byte ptr Temp1F, bl	;@2D28
 	call Random	;@2D2C
 	cmp al, 40h	;@2D2F
-	jae L2D3D	;@2D31
+	jae Attack_FighterTorches	;@2D31
 	clc	;@2D33
 	mov al, byte ptr Helms	;@2D34
 	adc al, 1	;@2D37
 	daa	; tile F0h: 1 in 4, a helm	;@2D39
 	mov byte ptr Helms, al	;@2D3A
-L2D3D:	mov bh, 0	;@2D3D
+Attack_FighterTorches:	mov bh, 0	;@2D3D
 	mov bl, byte ptr Temp1F	;@2D3F
 	mov di, bx	;@2D43
 	call Random	;@2D45
@@ -250,8 +250,8 @@ L2D3D:	mov bh, 0	;@2D3D
 	mov bl, byte ptr Temp1F	;@2D57
 	mov di, bx	;@2D5B
 	jmp Attack_ClearMonster	;@2D5D
-L2D60:	cmp al, 0F8h	;@2D60
-	jne L2D8B	;@2D62
+Attack_TryWizard:	cmp al, 0F8h	;@2D60
+	jne Attack_NoLoot	;@2D62
 	mov bx, di	;@2D64
 	mov byte ptr Temp1F, bl	;@2D66
 	call Random	;@2D6A
@@ -268,7 +268,7 @@ L2D60:	cmp al, 0F8h	;@2D60
 	mov bl, byte ptr Temp1F	;@2D82
 	mov di, bx	;@2D86
 	jmp Attack_ClearMonster	;@2D88
-L2D8B:	nop	;@2D8B
+Attack_NoLoot:	nop	;@2D8B
 ; clear the monster's record, then Gold + 1-17 (BCD, odd) and Exp + 1-4
 Attack_ClearMonster:	mov al, 0	;@2D8C
 	mov byte ptr MonsterUnder[di], al	;@2D8E
@@ -333,9 +333,9 @@ Attack_Dungeon:	nop	;@2E16
 	mov al, byte ptr DungeonLevel	;@2E30
 	call ReadDungeonCell	; AL = dungeon cell at (LookX,LookY), level AL	;@2E33
 	and al, 7	; monster bits	;@2E36
-	jne L2E3D	;@2E38
+	jne AttackD_FindMonster	;@2E38
 	jmp AttackD_Miss	;@2E3A
-L2E3D:	mov bh, 0	;@2E3D
+AttackD_FindMonster:	mov bh, 0	;@2E3D
 	mov bl, 1Fh	;@2E3F
 	mov di, bx	;@2E41
 	mov bx, di	;@2E43
@@ -365,9 +365,9 @@ AttackD_Found:	nop	;@2E7D
 	clc	;@2E81
 	rcr al, 1	;@2E82
 	cmp al, byte ptr Agility	; hit if random/2 < Agility	;@2E84
-	jb L2E8D	;@2E88
+	jb AttackD_Hit	;@2E88
 	jmp AttackD_Miss	;@2E8A
-L2E8D:	nop	;@2E8D
+AttackD_Hit:	nop	;@2E8D
 	call PrintInline	;@2E8E
 	db 48h,49h,54h,21h,0h	;@2E91
 	call XorAttackMark	;@2E96
@@ -479,17 +479,17 @@ Board_Check:	nop	;@2F96
 	cmp al, 22h	; horse	;@2FB0
 	je Board_Horse	;@2FB2
 	cmp al, 24h	; frigate	;@2FB4
-	je L2FCD	;@2FB6
+	je Board_ToFrigate	;@2FB6
 	cmp al, 26h	; plane	;@2FB8
-	je L2FD0	;@2FBA
+	je Board_ToPlane	;@2FBA
 	cmp al, 28h	; rocket	;@2FBC
-	je L2FD3	;@2FBE
+	je Board_ToRocket	;@2FBE
 	call PrintInline	;@2FC0
 	db 20h,57h,48h,41h,54h,3Fh,0h	;@2FC3
 	jmp EndCommandBeep	;@2FCA
-L2FCD:	jmp Board_Frigate	;@2FCD
-L2FD0:	jmp Board_Plane	;@2FD0
-L2FD3:	jmp Board_Rocket	;@2FD3
+Board_ToFrigate:	jmp Board_Frigate	;@2FCD
+Board_ToPlane:	jmp Board_Plane	;@2FD0
+Board_ToRocket:	jmp Board_Rocket	;@2FD3
 Board_Horse:	call PrintInline	;@2FD6
 	db 20h,48h,4Fh,52h,53h,45h,0h	;@2FD9
 	mov al, 8	;@2FE0
@@ -645,18 +645,18 @@ Cast_Dispatch:	cmp al, 1	;@31ED
 	cmp al, 4	;@31F9
 	je Cast_Passwall	;@31FB
 	cmp al, 5	;@31FD
-	je L3210	;@31FF
+	je Cast_ToSurface	;@31FF
 	cmp al, 6	;@3201
-	je L3213	;@3203
+	je Cast_ToPrayer	;@3203
 	cmp al, 7	;@3205
-	je L3216	;@3207
+	je Cast_ToMagicMissile	;@3207
 	cmp al, 8	;@3209
-	jne L3219	;@320B
+	jne Cast_ToKill	;@320B
 	jmp Cast_Blink	;@320D
-L3210:	jmp Cast_Surface	;@3210
-L3213:	jmp Cast_Prayer	;@3213
-L3216:	jmp Cast_MagicMissile	;@3216
-L3219:	jmp Cast_Kill	; 9 and up: Kill	;@3219
+Cast_ToSurface:	jmp Cast_Surface	;@3210
+Cast_ToPrayer:	jmp Cast_Prayer	;@3213
+Cast_ToMagicMissile:	jmp Cast_MagicMissile	;@3216
+Cast_ToKill:	jmp Cast_Kill	; 9 and up: Kill	;@3219
 ; Light: the light counter LightTurns = 96h, as a torch does.
 Cast_Light:	mov al, 96h	;@321C
 	mov byte ptr LightTurns, al	;@321E
@@ -761,9 +761,9 @@ Cast_BlinkGo:	nop	;@32F1
 	jmp EndCommand	;@32FE
 ; Kill: the monster in front dies (AttackD_Killed, with gold and Exp).
 Cast_Kill:	call FindMonsterAhead	;@3301
-	jne L3309	;@3304
+	jne Cast_KillFound	;@3304
 	jmp Cast_Failed	;@3306
-L3309:	jmp AttackD_Killed	;@3309
+Cast_KillFound:	jmp AttackD_Killed	;@3309
 ;------------------------------------------------------------------------------
 ; FindMonsterAhead: find the live monster (MonsterTile <> 0) on level DungeonLevel at the square in front
 ; of the player (PlayerX+FacingDX, PlayerY+FacingDY). Searches entries 1Fh down to 1.
@@ -854,29 +854,29 @@ Enter_Which:	nop	;@33C3
 	cmc	;@33CB
 	sbb al, 5	;@33CC
 	cmc	;@33CE
-	jne L33D4	;@33CF
+	jne Enter_TryTown	;@33CF
 	jmp Enter_Village	;@33D1
-L33D4:	cmc	;@33D4
+Enter_TryTown:	cmc	;@33D4
 	sbb al, 1	;@33D5
 	cmc	;@33D7
-	jne L33DD	;@33D8
+	jne Enter_TryTower	;@33D8
 	jmp Enter_Town	;@33DA
-L33DD:	cmc	;@33DD
+Enter_TryTower:	cmc	;@33DD
 	sbb al, 1	;@33DE
 	cmc	;@33E0
-	jne L33E6	;@33E1
+	jne Enter_TryCastle	;@33E1
 	jmp Enter_Tower	;@33E3
-L33E6:	cmc	;@33E6
+Enter_TryCastle:	cmc	;@33E6
 	sbb al, 1	;@33E7
 	cmc	;@33E9
-	jne L33EF	;@33EA
+	jne Enter_TryDungeon	;@33EA
 	jmp Enter_Castle	;@33EC
-L33EF:	cmc	;@33EF
+Enter_TryDungeon:	cmc	;@33EF
 	sbb al, 1	;@33F0
 	cmc	;@33F2
-	jne L33F8	;@33F3
+	jne Enter_TrySign	;@33F3
 	jmp Enter_Dungeon	;@33F5
-L33F8:	cmc	;@33F8
+Enter_TrySign:	cmc	;@33F8
 	sbb al, 1	;@33F9
 	cmc	;@33FB
 	jne Enter_What	;@33FC
@@ -1421,18 +1421,18 @@ Plane_Loop:	call PlayStepSound	; engine sound	;@3A5F
 	cmp ah, 0FFh	;@3A6B
 	jne Plane_Step	;@3A6E
 	cmp al, byte ptr KeyNorth	; north key	;@3A70
-	jne L3A79	;@3A74
+	jne Plane_TrySouth	;@3A74
 	jmp Plane_North	;@3A76
-L3A79:	cmp al, byte ptr KeySouth	; south	;@3A79
-	jne L3A82	;@3A7D
+Plane_TrySouth:	cmp al, byte ptr KeySouth	; south	;@3A79
+	jne Plane_TryEast	;@3A7D
 	jmp Plane_South	;@3A7F
-L3A82:	cmp al, byte ptr KeyEast	; east	;@3A82
-	jne L3A8B	;@3A86
+Plane_TryEast:	cmp al, byte ptr KeyEast	; east	;@3A82
+	jne Plane_TryWest	;@3A86
 	jmp Plane_East	;@3A88
-L3A8B:	cmp al, byte ptr KeyWest	; west	;@3A8B
-	jne L3A94	;@3A8F
+Plane_TryWest:	cmp al, byte ptr KeyWest	; west	;@3A8B
+	jne Plane_TryLand	;@3A8F
 	jmp Plane_West	;@3A91
-L3A94:	cmp al, 4Ch	; 'L' = land	;@3A94
+Plane_TryLand:	cmp al, 4Ch	; 'L' = land	;@3A94
 	jne Plane_Step	;@3A96
 	jmp Plane_Land	;@3A98
 ; one step in the heading, wrapping at 64

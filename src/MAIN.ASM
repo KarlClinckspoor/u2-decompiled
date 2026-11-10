@@ -301,9 +301,9 @@ MainLoop_PassTurn:	stc	;@090C
 	das	;@0929
 	cmc	;@092A
 	mov byte ptr FoodHi, al	;@092B
-	jb L0933	; no borrow: still food left	;@092E
+	jb MainLoop_FoodLeft	; no borrow: still food left	;@092E
 	jmp DieOfStarvation	; starved: PlayerDies	;@0930
-L0933:	jmp EndCommand	;@0933
+MainLoop_FoodLeft:	jmp EndCommand	;@0933
 ;
 ; MainLoop_GotKey: a key was pressed. Space = pass, then the four direction keys
 ; KeyNorth-KeyWest (what ReadKey makes of the arrow keys: N 0Eh, S 19h, E 05h,
@@ -328,10 +328,10 @@ MainLoop_North:	cmp al, byte ptr KeyNorth	; north (up arrow)	;@094F
 	mov al, byte ptr TileNorth	; tile north of the player	;@0962
 	call CheckStep	;@0965
 	cmp al, 0	;@0968
-	je L0973	;@096A
+	je MainLoop_NorthOk	;@096A
 	inc byte ptr PlayerY	; blocked: undo	;@096C
 	jmp MainLoop_InvalidMove	;@0970
-L0973:	jmp MainLoop_MoveDone	;@0973
+MainLoop_NorthOk:	jmp MainLoop_MoveDone	;@0973
 MainLoop_South:	cmp al, byte ptr KeySouth	; south (down arrow)	;@0976
 	jne MainLoop_West	;@097A
 	inc byte ptr PlayerY	;@097C
@@ -340,10 +340,10 @@ MainLoop_South:	cmp al, byte ptr KeySouth	; south (down arrow)	;@0976
 	mov al, byte ptr TileSouth	;@0989
 	call CheckStep	;@098C
 	cmp al, 0	;@098F
-	je L099A	;@0991
+	je MainLoop_SouthOk	;@0991
 	dec byte ptr PlayerY	;@0993
 	jmp MainLoop_InvalidMove	;@0997
-L099A:	jmp MainLoop_MoveDone	;@099A
+MainLoop_SouthOk:	jmp MainLoop_MoveDone	;@099A
 MainLoop_West:	cmp al, byte ptr KeyWest	; west (left arrow)	;@099D
 	jne MainLoop_East	;@09A1
 	dec byte ptr PlayerX	;@09A3
@@ -352,10 +352,10 @@ MainLoop_West:	cmp al, byte ptr KeyWest	; west (left arrow)	;@099D
 	mov al, byte ptr TileWest	;@09AF
 	call CheckStep	;@09B2
 	cmp al, 0	;@09B5
-	je L09C0	;@09B7
+	je MainLoop_WestOk	;@09B7
 	inc byte ptr PlayerX	;@09B9
 	jmp MainLoop_InvalidMove	;@09BD
-L09C0:	jmp MainLoop_MoveDone	;@09C0
+MainLoop_WestOk:	jmp MainLoop_MoveDone	;@09C0
 MainLoop_East:	cmp al, byte ptr KeyEast	; east (right arrow)	;@09C3
 	jne MainLoop_Command	;@09C7
 	inc byte ptr PlayerX	;@09C9
@@ -364,10 +364,10 @@ MainLoop_East:	cmp al, byte ptr KeyEast	; east (right arrow)	;@09C3
 	mov al, byte ptr TileEast	;@09D5
 	call CheckStep	;@09D8
 	cmp al, 0	;@09DB
-	je L09E6	;@09DD
+	je MainLoop_EastOk	;@09DD
 	dec byte ptr PlayerX	;@09DF
 	jmp MainLoop_InvalidMove	;@09E3
-L09E6:	jmp MainLoop_MoveDone	;@09E6
+MainLoop_EastOk:	jmp MainLoop_MoveDone	;@09E6
 ;
 ; A successful move flips LightTurns. On horseback the slow monsters only move
 ; when LightTurns is 0 (see 0A83): the horse is twice as fast.
@@ -386,12 +386,12 @@ MainLoop_Command:	push ax	;@09F4
 ; In: AL = key (upper case).
 ;
 DispatchCommand:	cmp al, 41h	; 'A'	;@09FB
-	jae L0A18	;@09FD
+	jae DispatchCommand_CheckZ	;@09FD
 	jmp IllegalCommand	;@09FF
 MainLoop_InvalidMove:	call PrintInline	;@0A02
 	db 2Dh,2Dh,49h,4Eh,56h,41h,4Ch,49h,44h,20h,4Dh,4Fh,56h,45h,21h,0h	; "--INVALID MOVE!"	;@0A05
 	jmp EndCommandBeep	;@0A15
-L0A18:	cmp al, 5Ah	; 'Z'	;@0A18
+DispatchCommand_CheckZ:	cmp al, 5Ah	; 'Z'	;@0A18
 	jbe DispatchCommand_Go	;@0A1A
 	jmp IllegalCommand	;@0A1C
 DispatchCommand_Go:	stc	;@0A1F
@@ -423,18 +423,18 @@ EndCommand:	mov al, 0Dh	;@0A33
 	or al, al	;@0A46
 	je OutdoorMonsters	;@0A48
 	cmp al, 1	;@0A4A
-	jne L0A51	;@0A4C
+	jne EndCommand_TryTowne	;@0A4C
 	jmp TownTurnVillage	;@0A4E
-L0A51:	cmp al, 2	;@0A51
-	jne L0A58	;@0A53
+EndCommand_TryTowne:	cmp al, 2	;@0A51
+	jne EndCommand_TryCastle	;@0A53
 	jmp TownTurnTowne	;@0A55
-L0A58:	cmp al, 3	;@0A58
-	jne L0A5F	;@0A5A
+EndCommand_TryCastle:	cmp al, 3	;@0A58
+	jne EndCommand_TryTower	;@0A5A
 	jmp TownTurnCastle	;@0A5C
-L0A5F:	cmp al, 4	;@0A5F
-	jne L0A66	;@0A61
+EndCommand_TryTower:	cmp al, 4	;@0A5F
+	jne EndCommand_TryDungeon	;@0A61
 	jmp DungeonTurnTower	;@0A63
-L0A66:	cmp al, 5	;@0A66
+EndCommand_TryDungeon:	cmp al, 5	;@0A66
 	jne OutdoorMonsters	;@0A68
 	jmp DungeonTurnDungeon	;@0A6A
 
@@ -501,18 +501,18 @@ MonsterTurn:	call DistToPlayer	; DeltaX/DeltaY = player X/Y - monster X/Y	;@0AA7
 	jae MonsterTurn_Step	;@0AD1
 	mov al, byte ptr MonsterTile[di]	;@0AD3
 	cmp al, 34h	;@0AD7
-	jne L0AE1	;@0AD9
+	jne MonsterTurn_TryArms	;@0AD9
 	call SpellParalyzeLegs	; legs paralysed (magical boots save)	;@0ADB
 	jmp MonsterTurn_Step	;@0ADE
-L0AE1:	cmp al, 38h	;@0AE1
-	jne L0AEB	;@0AE3
+MonsterTurn_TryArms:	cmp al, 38h	;@0AE1
+	jne MonsterTurn_TryMissile	;@0AE3
 	call SpellParalyzeArms	; arms paralysed (magical cloak saves)	;@0AE5
 	jmp MonsterTurn_Step	;@0AE8
-L0AEB:	cmp al, 0F8h	;@0AEB
-	jne L0AF5	;@0AED
+MonsterTurn_TryMissile:	cmp al, 0F8h	;@0AEB
+	jne MonsterTurn_TrySleep	;@0AED
 	call SpellMagicMissile	; magic missile: adds 2 attacks, 2 hits, 40h damage	;@0AEF
 	jmp MonsterTurn_Step	;@0AF2
-L0AF5:	cmp al, 3Ch	;@0AF5
+MonsterTurn_TrySleep:	cmp al, 3Ch	;@0AF5
 	jne MonsterTurn_Step	;@0AF7
 	call SpellSleep	; sleep spell (the idol saves)	;@0AF9
 MonsterTurn_Step:	mov bh, 0	;@0AFC
@@ -537,9 +537,9 @@ MonsterTurn_Target:	clc	;@0B25
 	adc al, byte ptr DeltaX	;@0B2A
 	and al, 3Fh	;@0B2E
 	cmp al, byte ptr PlayerX	;@0B30
-	je L0B39	;@0B34
+	je MonsterTurn_CheckY	;@0B34
 	jmp MonsterStepToward	; no: move it	;@0B36
-L0B39:	clc	;@0B39
+MonsterTurn_CheckY:	clc	;@0B39
 	mov al, byte ptr MonsterY[di]	; monster Y + DY = player Y?	;@0B3A
 	adc al, byte ptr DeltaY	;@0B3E
 	and al, 3Fh	;@0B42
@@ -581,15 +581,15 @@ MonsterAttack_Roll:	call Random	;@0B62
 	mov si, bx	;@0B92
 	mov bx, si	;@0B94
 	cmp bl, 6	;@0B96
-	jne L0B9D	;@0B99
+	jne MonsterAttack_AddDamage	;@0B99
 	add al, al	;@0B9B
-L0B9D:	mov byte ptr Temp22, al	;@0B9D
+MonsterAttack_AddDamage:	mov byte ptr Temp22, al	;@0B9D
 MonsterAttack_Done:	nop	;@0BA0
 	mov al, byte ptr MapType	;@0BA1
 	or al, al	;@0BA4
-	je L0BAB	;@0BA6
+	je MonsterAttack_Outdoors	;@0BA6
 	jmp TownTurnNextMonster	; not outdoors: back to the EVENTS monster loop	;@0BA8
-L0BAB:	nop	;@0BAB
+MonsterAttack_Outdoors:	nop	;@0BAB
 	jmp OutdoorMonsters_Next	;@0BAC
 
 ;------------------------------------------------------------------------------
@@ -663,17 +663,17 @@ EndTurn_Status:	call DrawStatusLines	; status lines	;@0C1C
 ;
 EndTurn_Timers:	mov al, byte ptr LegsParalyzed	; legs paralysed	;@0C33
 	or al, al	;@0C36
-	je L0C3E	;@0C38
+	je EndTurn_ArmsTimer	;@0C38
 	dec byte ptr LegsParalyzed	;@0C3A
-L0C3E:	mov al, byte ptr ArmsParalyzed	; arms paralysed	;@0C3E
+EndTurn_ArmsTimer:	mov al, byte ptr ArmsParalyzed	; arms paralysed	;@0C3E
 	or al, al	;@0C41
-	je L0C49	;@0C43
+	je EndTurn_SleepTimer	;@0C43
 	dec byte ptr ArmsParalyzed	;@0C45
-L0C49:	mov al, byte ptr SleepTurns	; asleep	;@0C49
+EndTurn_SleepTimer:	mov al, byte ptr SleepTurns	; asleep	;@0C49
 	or al, al	;@0C4C
-	je L0C54	;@0C4E
+	je EndTurn_TimeStopTimer	;@0C4E
 	dec byte ptr SleepTurns	;@0C50
-L0C54:	mov al, byte ptr TimeStopTurns	; time stopped (Negate)	;@0C54
+EndTurn_TimeStopTimer:	mov al, byte ptr TimeStopTurns	; time stopped (Negate)	;@0C54
 	or al, al	;@0C57
 	je EndTurn_Next	;@0C59
 	dec byte ptr TimeStopTurns	;@0C5B
@@ -742,10 +742,10 @@ SpawnMonster_X:	mov bh, 0	;@0CC0
 	mov byte ptr MonsterX[di], al	; X	;@0CC8
 	mov byte ptr LookX, al	;@0CCC
 	call Random	;@0CCF
-	js L0CD9	;@0CD2
+	js SpawnMonster_NoSpawn	;@0CD2
 	and al, 3Fh	;@0CD4
 	jmp SpawnMonster_Y	;@0CD6
-L0CD9:	jmp EndTurn	;@0CD9
+SpawnMonster_NoSpawn:	jmp EndTurn	;@0CD9
 SpawnMonster_Y:	mov bh, 0	;@0CDC
 	mov bl, byte ptr Temp1F	;@0CDE
 	mov di, bx	;@0CE2
@@ -763,47 +763,47 @@ SpawnMonster_Y:	mov bh, 0	;@0CDC
 ;
 	clc	;@0D01
 	rcr al, 1	;@0D02
-	jae L0D09	;@0D04
-	jmp SpawnMonster_30	;@0D06
-L0D09:	clc	;@0D09
+	jae SpawnMonster_Bit1	;@0D04
+	jmp SpawnMonster_Orc	;@0D06
+SpawnMonster_Bit1:	clc	;@0D09
 	rcr al, 1	;@0D0A
-	jae L0D11	;@0D0C
+	jae SpawnMonster_Bit2	;@0D0C
 	jmp SpawnMonster_Thief	;@0D0E
-L0D11:	clc	;@0D11
+SpawnMonster_Bit2:	clc	;@0D11
 	rcr al, 1	;@0D12
-	jae L0D19	;@0D14
-	jmp SpawnMonster_34	;@0D16
-L0D19:	clc	;@0D19
+	jae SpawnMonster_Bit3	;@0D14
+	jmp SpawnMonster_Daemon	;@0D16
+SpawnMonster_Bit3:	clc	;@0D19
 	rcr al, 1	;@0D1A
-	jae L0D21	;@0D1C
-	jmp SpawnMonster_2C	;@0D1E
-L0D21:	clc	;@0D21
+	jae SpawnMonster_Bit4	;@0D1C
+	jmp SpawnMonster_SeaSerpent	;@0D1E
+SpawnMonster_Bit4:	clc	;@0D21
 	rcr al, 1	;@0D22
-	jae L0D29	;@0D24
+	jae SpawnMonster_Bit5	;@0D24
 	jmp SpawnMonster_Fighter	;@0D26
-L0D29:	clc	;@0D29
+SpawnMonster_Bit5:	clc	;@0D29
 	rcr al, 1	;@0D2A
-	jae L0D31	;@0D2C
-	jmp L0DCB	;@0D2E
-L0D31:	clc	;@0D31
+	jae SpawnMonster_Bit6	;@0D2C
+	jmp SpawnMonster_JmpPirate	;@0D2E
+SpawnMonster_Bit6:	clc	;@0D31
 	rcr al, 1	;@0D32
-	jae L0D39	;@0D34
-	jmp L0DCE	;@0D36
-L0D39:	clc	;@0D39
+	jae SpawnMonster_Bit7	;@0D34
+	jmp SpawnMonster_JmpDevil	;@0D36
+SpawnMonster_Bit7:	clc	;@0D39
 	rcr al, 1	;@0D3A
-	jae L0D41	;@0D3C
-	jmp L0DD1	;@0D3E
-L0D41:	jmp SpawnMonster_3C	; SpawnCounter = 0	;@0D41
+	jae SpawnMonster_NoBit	;@0D3C
+	jmp SpawnMonster_JmpWizard	;@0D3E
+SpawnMonster_NoBit:	jmp SpawnMonster_Balron	; SpawnCounter = 0	;@0D41
 ;
 ; One block per type: right terrain? then write the map code to the map
 ; (MapCellPtr = the cell, SI = 0) and to MonsterTile, the hit points to MonsterHP, done
 ; (EndTurn). Wrong terrain: SpawnMonster_Refused.
 ;
-SpawnMonster_30:	mov al, byte ptr MonsterUnder[di]	;@0D44
+SpawnMonster_Orc:	mov al, byte ptr MonsterUnder[di]	;@0D44
 	cmp al, 8	; grass?	;@0D48
-	je L0D4F	;@0D4A
+	je SpawnMonster_PutOrc	;@0D4A
 	jmp SpawnMonster_Refused	;@0D4C
-L0D4F:	mov al, 30h	;@0D4F
+SpawnMonster_PutOrc:	mov al, 30h	;@0D4F
 	mov bx, word ptr MapCellPtr	;@0D51
 	mov byte ptr [bx+si], al	;@0D55
 	mov byte ptr MonsterTile[di], al	;@0D57
@@ -812,31 +812,31 @@ L0D4F:	mov al, 30h	;@0D4F
 	jmp EndTurn	;@0D61
 SpawnMonster_Thief:	mov al, byte ptr MonsterUnder[di]	;@0D64
 	cmp al, 8	;@0D68
-	je L0D6F	;@0D6A
+	je SpawnMonster_PutThief	;@0D6A
 	jmp SpawnMonster_Refused	;@0D6C
-L0D6F:	mov al, 0FCh	; thief	;@0D6F
+SpawnMonster_PutThief:	mov al, 0FCh	; thief	;@0D6F
 	mov bx, word ptr MapCellPtr	;@0D71
 	mov byte ptr [bx+si], al	;@0D75
 	mov byte ptr MonsterTile[di], al	;@0D77
 	mov al, 20h	;@0D7B
 	mov byte ptr MonsterHP[di], al	;@0D7D
 	jmp EndTurn	;@0D81
-SpawnMonster_34:	mov al, byte ptr MonsterUnder[di]	;@0D84
+SpawnMonster_Daemon:	mov al, byte ptr MonsterUnder[di]	;@0D84
 	cmp al, 8	;@0D88
-	je L0D8F	;@0D8A
+	je SpawnMonster_PutDaemon	;@0D8A
 	jmp SpawnMonster_Refused	;@0D8C
-L0D8F:	mov al, 34h	;@0D8F
+SpawnMonster_PutDaemon:	mov al, 34h	;@0D8F
 	mov bx, word ptr MapCellPtr	;@0D91
 	mov byte ptr [bx+si], al	;@0D95
 	mov byte ptr MonsterTile[di], al	;@0D97
 	mov al, 40h	;@0D9B
 	mov byte ptr MonsterHP[di], al	;@0D9D
 	jmp EndTurn	;@0DA1
-SpawnMonster_2C:	mov al, byte ptr MonsterUnder[di]	;@0DA4
+SpawnMonster_SeaSerpent:	mov al, byte ptr MonsterUnder[di]	;@0DA4
 	cmp al, 0	; water?	;@0DA8
-	je L0DAF	;@0DAA
+	je SpawnMonster_PutSeaSerpent	;@0DAA
 	jmp SpawnMonster_Refused	;@0DAC
-L0DAF:	mov al, 2Ch	;@0DAF
+SpawnMonster_PutSeaSerpent:	mov al, 2Ch	;@0DAF
 	mov bx, word ptr MapCellPtr	;@0DB1
 	mov byte ptr [bx+si], al	;@0DB5
 	mov byte ptr MonsterTile[di], al	;@0DB7
@@ -845,14 +845,14 @@ L0DAF:	mov al, 2Ch	;@0DAF
 	jmp EndTurn	;@0DC1
 SpawnMonster_Refused:	dec byte ptr SpawnCounter	; wrong terrain: try this type again next time	;@0DC4
 	jmp EndTurn	;@0DC8
-L0DCB:	jmp SpawnMonster_Pirate	; bit 5	;@0DCB
-L0DCE:	jmp SpawnMonster_38	; bit 6	;@0DCE
-L0DD1:	jmp SpawnMonster_Wizard	; bit 7	;@0DD1
+SpawnMonster_JmpPirate:	jmp SpawnMonster_Pirate	; bit 5	;@0DCB
+SpawnMonster_JmpDevil:	jmp SpawnMonster_Devil	; bit 6	;@0DCE
+SpawnMonster_JmpWizard:	jmp SpawnMonster_Wizard	; bit 7	;@0DD1
 SpawnMonster_Fighter:	mov al, byte ptr MonsterUnder[di]	;@0DD4
 	cmp al, 8	;@0DD8
-	je L0DDE	;@0DDA
+	je SpawnMonster_PutFighter	;@0DDA
 	jmp SpawnMonster_Refused	;@0DDC
-L0DDE:	mov al, 0F0h	; fighter figure	;@0DDE
+SpawnMonster_PutFighter:	mov al, 0F0h	; fighter figure	;@0DDE
 	mov bx, word ptr MapCellPtr	;@0DE0
 	mov byte ptr [bx+si], al	;@0DE4
 	mov byte ptr MonsterTile[di], al	;@0DE6
@@ -861,20 +861,20 @@ L0DDE:	mov al, 0F0h	; fighter figure	;@0DDE
 	jmp EndTurn	;@0DF0
 SpawnMonster_Pirate:	mov al, byte ptr MonsterUnder[di]	;@0DF3
 	cmp al, 0	; water?	;@0DF7
-	je L0DFD	;@0DF9
+	je SpawnMonster_PutPirate	;@0DF9
 	jmp SpawnMonster_Refused	;@0DFB
-L0DFD:	mov al, 48h	; frigate figure (pirates?)	;@0DFD
+SpawnMonster_PutPirate:	mov al, 48h	; frigate figure (pirates?)	;@0DFD
 	mov bx, word ptr MapCellPtr	;@0DFF
 	mov byte ptr [bx+si], al	;@0E03
 	mov byte ptr MonsterTile[di], al	;@0E05
 	mov al, 0A0h	;@0E09
 	mov byte ptr MonsterHP[di], al	;@0E0B
 	jmp EndTurn	;@0E0F
-SpawnMonster_38:	mov al, byte ptr MonsterUnder[di]	;@0E12
+SpawnMonster_Devil:	mov al, byte ptr MonsterUnder[di]	;@0E12
 	cmp al, 8	;@0E16
-	je L0E1C	;@0E18
+	je SpawnMonster_PutDevil	;@0E18
 	jmp SpawnMonster_Refused	;@0E1A
-L0E1C:	mov al, 38h	;@0E1C
+SpawnMonster_PutDevil:	mov al, 38h	;@0E1C
 	mov bx, word ptr MapCellPtr	;@0E1E
 	mov byte ptr [bx+si], al	;@0E22
 	mov byte ptr MonsterTile[di], al	;@0E24
@@ -883,20 +883,20 @@ L0E1C:	mov al, 38h	;@0E1C
 	jmp EndTurn	;@0E2E
 SpawnMonster_Wizard:	mov al, byte ptr MonsterUnder[di]	;@0E31
 	cmp al, 8	;@0E35
-	je L0E3B	;@0E37
+	je SpawnMonster_PutWizard	;@0E37
 	jmp SpawnMonster_Refused	;@0E39
-L0E3B:	mov al, 0F8h	; wizard (casts magic missiles)	;@0E3B
+SpawnMonster_PutWizard:	mov al, 0F8h	; wizard (casts magic missiles)	;@0E3B
 	mov bx, word ptr MapCellPtr	;@0E3D
 	mov byte ptr [bx+si], al	;@0E41
 	mov byte ptr MonsterTile[di], al	;@0E43
 	mov al, 0E0h	;@0E47
 	mov byte ptr MonsterHP[di], al	;@0E49
 	jmp EndTurn	;@0E4D
-SpawnMonster_3C:	mov al, byte ptr MonsterUnder[di]	;@0E50
+SpawnMonster_Balron:	mov al, byte ptr MonsterUnder[di]	;@0E50
 	cmp al, 8	;@0E54
-	je L0E5B	;@0E56
+	je SpawnMonster_PutBalron	;@0E56
 	jmp SpawnMonster_Refused	;@0E58
-L0E5B:	mov al, 3Ch	;@0E5B
+SpawnMonster_PutBalron:	mov al, 3Ch	;@0E5B
 	mov bx, word ptr MapCellPtr	;@0E5D
 	mov byte ptr [bx+si], al	;@0E61
 	mov byte ptr MonsterTile[di], al	;@0E63

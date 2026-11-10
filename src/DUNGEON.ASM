@@ -47,9 +47,9 @@ ASSUME CS:CODE, DS:DATA
 ;------------------------------------------------------------------------------
 MoveTimeDoor:	mov al, byte ptr Planet	;@26F9
 	cmp al, 0	; on Earth?	;@26FC
-	je L2701	;@26FE
+	je TimeDoor_Countdown	;@26FE
 	ret	;@2700
-L2701:	dec byte ptr TimeDoorTimer	; door's turns left	;@2701
+TimeDoor_Countdown:	dec byte ptr TimeDoorTimer	; door's turns left	;@2701
 	je TimeDoor_Remove	;@2705
 	ret	;@2707
 ; take the door away from its current spot
@@ -144,8 +144,8 @@ Dungeon_SleepZ:	call PrintInline	; "Z"	;@27D6
 	mov bh, 0	;@27DB
 	mov bl, 0FFh	;@27DD
 	mov di, bx	;@27DF
-L27E1:	dec di	; short CPU-speed dependent delay	;@27E1
-	jne L27E1	;@27E2
+Dungeon_SleepDelay:	dec di	; short CPU-speed dependent delay	;@27E1
+	jne Dungeon_SleepDelay	;@27E2
 	dec byte ptr AmountHi	;@27E4
 	jne Dungeon_SleepZ	;@27E8
 	dec byte ptr SleepTurns	; one sleep turn less	;@27EA
@@ -190,18 +190,18 @@ Dungeon_WaitKey:	mov bx, 0	;@2807
 ; a key: AL = its code
 Dungeon_GotKey:	nop	;@2832
 	cmp al, byte ptr KeyNorth	; north key (up arrow) = advance	;@2833
-	jne L283C	;@2837
+	jne Dungeon_KeyWest	;@2837
 	jmp DungeonAdvance	;@2839
-L283C:	cmp al, byte ptr KeyWest	; west key (left arrow) = turn left	;@283C
-	jne L2845	;@2840
+Dungeon_KeyWest:	cmp al, byte ptr KeyWest	; west key (left arrow) = turn left	;@283C
+	jne Dungeon_KeyEast	;@2840
 	jmp DungeonTurnLeft	;@2842
-L2845:	cmp al, byte ptr KeyEast	; east key (right arrow) = turn right	;@2845
-	jne L284E	;@2849
+Dungeon_KeyEast:	cmp al, byte ptr KeyEast	; east key (right arrow) = turn right	;@2845
+	jne Dungeon_KeySouth	;@2849
 	jmp DungeonTurnRight	;@284B
-L284E:	cmp al, byte ptr KeySouth	; south key (down arrow) = retreat	;@284E
-	jne L2857	;@2852
+Dungeon_KeySouth:	cmp al, byte ptr KeySouth	; south key (down arrow) = retreat	;@284E
+	jne Dungeon_KeySpace	;@2852
 	jmp DungeonRetreat	;@2854
-L2857:	cmp al, 20h	; space = pass	;@2857
+Dungeon_KeySpace:	cmp al, 20h	; space = pass	;@2857
 	jne Dungeon_LetterCmd	;@2859
 	jmp DungeonPass	;@285B
 Dungeon_LetterCmd:	jmp DispatchCommand	; letter commands A-Z	;@285E
@@ -390,20 +390,20 @@ HelmMap_Loop:	mov al, byte ptr cs:HelmOriginX	;@29E6
 HelmMap_Classify:	cmp al, 10h	; mountains: solid	;@2A0A
 	je HelmMap_Solid	;@2A0C
 	cmp al, 78h	;@2A0E
-	jb L2A16	;@2A10
+	jb HelmMap_CheckGrass	;@2A10
 	cmp al, 0F0h	; 78h-0EFh: solid	;@2A12
 	jb HelmMap_Solid	;@2A14
-L2A16:	cmp al, 8	; grass	;@2A16
+HelmMap_CheckGrass:	cmp al, 8	; grass	;@2A16
 	je HelmMap_Grass	;@2A18
 	cmp al, 0Ch	; woods	;@2A1A
 	je HelmMap_Woods	;@2A1C
 	cmp al, 4	; marsh	;@2A1E
-	je L2A29	;@2A20
+	je HelmMap_ToMarsh	;@2A20
 	cmp al, 70h	;@2A22
-	je L2A2C	;@2A24
+	je HelmMap_ToTownFloor	;@2A24
 	jmp HelmMap_Other	; others: middle square	;@2A26
-L2A29:	jmp HelmMap_Marsh	;@2A29
-L2A2C:	jmp HelmMap_Tile70	;@2A2C
+HelmMap_ToMarsh:	jmp HelmMap_Marsh	;@2A29
+HelmMap_ToTownFloor:	jmp HelmMap_TownFloor	;@2A2C
 ; solid: (0,0) (0,1) (2,1) (2,0), then falls into the woods and grass patterns
 HelmMap_Solid:	mov bh, 0	;@2A2F
 	mov bl, 0	;@2A31
@@ -481,7 +481,7 @@ HelmMap_Marsh:	mov bh, 0	;@2AAA
 	call PlotOverviewDot	;@2AC5
 	jmp HelmMap_Next	;@2AC8
 ; tile 70h: (0,0) (0,1) (2,0) (2,1)
-HelmMap_Tile70:	mov bh, 0	;@2ACB
+HelmMap_TownFloor:	mov bh, 0	;@2ACB
 	mov bl, 0	;@2ACD
 	mov di, bx	;@2ACF
 	mov bh, 0	;@2AD1
@@ -546,11 +546,11 @@ HelmMap_Next:	inc byte ptr DeltaX	;@2B46
 	mov byte ptr DeltaX, al	;@2B4F
 	or al, al	;@2B52
 	je HelmMap_NextRow	; end of the row	;@2B54
-L2B56:	jmp HelmMap_Loop	;@2B56
+HelmMap_Continue:	jmp HelmMap_Loop	;@2B56
 HelmMap_NextRow:	inc byte ptr DeltaY	;@2B59
 	mov al, byte ptr DeltaY	;@2B5D
 	cmp al, 40h	;@2B60
-	jb L2B56	;@2B62
+	jb HelmMap_Continue	;@2B62
 	ret	;@2B64
 CODE ENDS
 END

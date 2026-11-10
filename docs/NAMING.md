@@ -37,8 +37,9 @@ MASM ignores case; write names in CamelCase for reading.
 | BSS buffer pointers | `...Ptr` | `MapBufPtr`, `TalkBufPtr`, `MonsterBufPtr` |
 | dead code (nothing reaches it) | `Dead_` + what it was | `Dead_LoadPicCas`, `Dead_InsertPlayerDisk` |
 
-- A local label that is only "the next part" of a routine may keep its `Lxxxx` name; name the
-  ones that mean something (loop heads, exits, alternate entries, error paths).
+- Every label has a name, local branch targets included: name a new one for what happens there
+  (`_Next`, `_Done`, `_Loop`, `_CheckY`), and in a chain of compares for the test it starts
+  (`_TryArms`). A jump that only extends a short branch's range is `_ToTarget`.
 - A cs: operand into the middle of an instruction stays `Name+n`; the instruction gets a
   comment saying what is patched (self-modifying code).
 - Keep the original's terms where the game has them (the manual in `gamedata/`, the strings

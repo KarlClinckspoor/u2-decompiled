@@ -360,9 +360,9 @@ Steal_NoLuck:	call PrintInline	;@3F7E
 	db 4Eh,4Fh,20h,4Ch,55h,43h,4Bh,21h,0h	;@3F81
 	call Random	;@3F8A
 	and al, 7	;@3F8D
-	jne L3F94	;@3F8F
+	jne Steal_Done	;@3F8F
 	call AlertTownGuards	; 1 in 8: alarm the guards	;@3F91
-L3F94:	nop	;@3F94
+Steal_Done:	nop	;@3F94
 	jmp EndCommand	;@3F95
 ; A merchant: try the luck.
 Steal_TryLuck:	nop	;@3F98

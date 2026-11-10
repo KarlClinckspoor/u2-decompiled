@@ -80,8 +80,8 @@ HoldTone:	mov ax, bx	;@5CD2
 	mov al, ah	;@5CD6
 	out 42h, al	;@5CD8
 HoldTone_Loop:	mov ax, word ptr ToneDelay		; speed-dependent delay	;@5CDA
-L5CDD:	dec ax	;@5CDD
-	jns L5CDD	;@5CDE
+HoldTone_Delay:	dec ax	;@5CDD
+	jns HoldTone_Delay	;@5CDE
 	dec cx	;@5CE0
 	jne HoldTone_Loop	;@5CE1
 	ret	;@5CE3
@@ -128,11 +128,11 @@ PlayToneSeq_Loop:	mov cl, 0	;@5D22
 	call HoldTone	;@5D37
 	jmp PlayToneSeq_Next	;@5D3A
 PlayToneSeq_Rest:	call StopTone		; rest: speaker off, wait, start the next note	;@5D3D
-L5D40:	mov ax, word ptr ToneDelay	;@5D40
-L5D43:	dec ax	;@5D43
-	jns L5D43	;@5D44
+PlayToneSeq_RestLoop:	mov ax, word ptr ToneDelay	;@5D40
+PlayToneSeq_RestDelay:	dec ax	;@5D43
+	jns PlayToneSeq_RestDelay	;@5D44
 	dec cx	;@5D46
-	jne L5D40	;@5D47
+	jne PlayToneSeq_RestLoop	;@5D47
 	mov bx, word ptr cs:[bp+4]	;@5D49
 	call StartTone	;@5D4D
 PlayToneSeq_Next:	add bp, 3	;@5D50

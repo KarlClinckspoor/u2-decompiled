@@ -65,12 +65,12 @@ PrintCsTblString:	push es	;@155D
 ; skip SI zero terminators
 PrintNth_Skip:	mov al, byte ptr es:[di]	;@1564
 	cmp al, 0	;@1567
-	je L156E	;@1569
-L156B:	inc di	;@156B
+	je PrintNth_CountZero	;@1569
+PrintNth_NextByte:	inc di	;@156B
 	jmp PrintNth_Skip	;@156C
-L156E:	dec si	;@156E
+PrintNth_CountZero:	dec si	;@156E
 	je PrintNth_Print	;@156F
-	jmp L156B	;@1571
+	jmp PrintNth_NextByte	;@1571
 ; print until the next zero
 PrintNth_Print:	inc di	;@1573
 	mov al, byte ptr es:[di]	;@1574
@@ -105,27 +105,27 @@ ShopDispatch_West:	mov al, byte ptr PlayerY	;@15A2
 ShopDispatch_NE:	nop	;@15AC
 	mov al, byte ptr MapType	;@15AD
 	cmp al, 2	; towne?	;@15B0
-	jne L15B7	;@15B2
+	jne ShopDispatch_Food	;@15B2
 	jmp ShopArmour	; towne: armour	;@15B4
-L15B7:	jmp ShopFood	; village/castle: food	;@15B7
+ShopDispatch_Food:	jmp ShopFood	; village/castle: food	;@15B7
 ShopDispatch_NW:	nop	;@15BA
 	mov al, byte ptr MapType	;@15BB
 	cmp al, 2	;@15BE
-	jne L15C5	;@15C0
+	jne ShopDispatch_Oracle	;@15C0
 	jmp ShopWeapons	; towne: weapons	;@15C2
-L15C5:	jmp ShopOracle	; village/castle: oracle	;@15C5
+ShopDispatch_Oracle:	jmp ShopOracle	; village/castle: oracle	;@15C5
 ShopDispatch_SE:	nop	;@15C8
 	mov al, byte ptr MapType	;@15C9
 	cmp al, 2	;@15CC
-	jne L15D3	;@15CE
+	jne ShopDispatch_Cleric	;@15CE
 	jmp ShopTransport	; towne: transport	;@15D0
-L15D3:	jmp ShopClericSpells	; village/castle: cleric spells	;@15D3
+ShopDispatch_Cleric:	jmp ShopClericSpells	; village/castle: cleric spells	;@15D3
 ShopDispatch_SW:	nop	;@15D6
 	mov al, byte ptr MapType	;@15D7
 	cmp al, 2	;@15DA
-	jne L15E1	;@15DC
+	jne ShopDispatch_Wizard	;@15DC
 	jmp ShopPub	; towne: pub	;@15DE
-L15E1:	jmp ShopWizardSpells	; village/castle: wizard spells	;@15E1
+ShopDispatch_Wizard:	jmp ShopWizardSpells	; village/castle: wizard spells	;@15E1
 
 ;------------------------------------------------------------------------------
 ; ShopPub: the pub. "1-BUY, 2-TIP". Buy: pay 5 gold for a drink and hear tip 1.
@@ -277,11 +277,11 @@ Cleric_Welcome:	nop	;@1869
 	db 57h,45h,4Ch,43h,4Fh,4Dh,45h,20h,0h	;@186D
 	mov al, byte ptr PlayerSex	;@1876
 	cmp al, 1	; female?	;@1879
-	je L188C	;@187B
+	je Cleric_Sister	;@187B
 	call PrintInline	; "BROTHER "	;@187D
 	db 42h,52h,4Fh,54h,48h,45h,52h,20h,0h	;@1880
 	jmp Cleric_Menu	;@1889
-L188C:	call PrintInline	; "SISTER "	;@188C
+Cleric_Sister:	call PrintInline	; "SISTER "	;@188C
 	db 53h,49h,53h,54h,45h,52h,20h,0h	;@188F
 Cleric_Menu:	call PrintPlayerName	; player's name	;@1897
 	call PrintInline	; menu of spells 1-6, "YOUR INTEREST?"	;@189A

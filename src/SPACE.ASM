@@ -137,21 +137,21 @@ SpaceCmd_Poll:	call MoveStars	;@6A86
 	cmp ah, 0FFh	; key pressed?	;@6A92
 	jne SpaceCmd_Poll	;@6A95
 	cmp al, byte ptr KeyWest	;@6A97
-	jne L6AA0	;@6A9B
+	jne SpaceCmd_KeyEast	;@6A9B
 	jmp SpaceCmd_Left	;@6A9D
-L6AA0:	cmp al, byte ptr KeyEast	;@6AA0
-	jne L6AA9	;@6AA4
+SpaceCmd_KeyEast:	cmp al, byte ptr KeyEast	;@6AA0
+	jne SpaceCmd_KeyNorth	;@6AA4
 	jmp SpaceCmd_Right	;@6AA6
-L6AA9:	cmp al, byte ptr KeyNorth	;@6AA9
-	jne L6AB2	;@6AAD
+SpaceCmd_KeyNorth:	cmp al, byte ptr KeyNorth	;@6AA9
+	jne SpaceCmd_KeySouth	;@6AAD
 	jmp SpaceCmd_Climb	;@6AAF
-L6AB2:	cmp al, byte ptr KeySouth	;@6AB2
-	jne L6ABB	;@6AB6
+SpaceCmd_KeySouth:	cmp al, byte ptr KeySouth	;@6AB2
+	jne SpaceCmd_KeyH	;@6AB6
 	jmp SpaceCmd_Dive	;@6AB8
-L6ABB:	cmp al, 48h	; 'H'	;@6ABB
-	jne L6AC2	;@6ABD
+SpaceCmd_KeyH:	cmp al, 48h	; 'H'	;@6ABB
+	jne SpaceCmd_KeyL	;@6ABD
 	jmp SpaceCmdHyperwarp	;@6ABF
-L6AC2:	cmp al, 4Ch	; 'L'	;@6AC2
+SpaceCmd_KeyL:	cmp al, 4Ch	; 'L'	;@6AC2
 	jne SpaceCmd_Recenter	;@6AC4
 	jmp SpaceCmdLand	;@6AC6
 SpaceCmd_Recenter:	call EraseCrosshair	;@6AC9
@@ -236,9 +236,9 @@ MoveStars_Loop:	mov al, byte ptr StarXs[si]	;@6B47
 	cmc	;@6B6D
 	sbb al, byte ptr cs:StarStepXTbl[di]	; X - step	;@6B6E
 	cmc	;@6B73
-	jb L6B79	;@6B74
+	jb MoveStars_StoreLeftX	;@6B74
 	jmp MoveStars_NewStar	; went past 0: new star	;@6B76
-L6B79:	mov byte ptr StarNewX, al	;@6B79
+MoveStars_StoreLeftX:	mov byte ptr StarNewX, al	;@6B79
 	jmp MoveStars_Y	;@6B7C
 MoveStars_RightX:	clc	;@6B7F
 	rcr al, 1	;@6B80
@@ -296,21 +296,21 @@ MoveStars_BelowY:	clc	;@6BD5
 	mov al, byte ptr StarCurY	;@6BE5
 	clc	;@6BE8
 	adc al, byte ptr cs:StarStepYTbl[di]	;@6BE9
-	jns L6BF3	;@6BEE
+	jns MoveStars_StoreBelowY	;@6BEE
 	jmp MoveStars_NewStar	;@6BF0
-L6BF3:	mov byte ptr StarNewY, al	;@6BF3
+MoveStars_StoreBelowY:	mov byte ptr StarNewY, al	;@6BF3
 ; erase the star at its old place (not in mode 0), plot it at StarNewX,StarNewY
 MoveStars_Plot:	mov bx, si	;@6BF6
 	mov byte ptr StarIndex, bl	;@6BF8
 	mov al, byte ptr StarMode	;@6BFC
 	or al, al	;@6BFF
-	je L6C14	;@6C01
+	je MoveStars_PlotNew	;@6C01
 	mov al, byte ptr StarXs[si]	;@6C03
 	mov byte ptr PlotX, al	;@6C07
 	mov al, byte ptr StarYs[si]	;@6C0A
 	mov byte ptr PlotY, al	;@6C0E
 	call ErasePixel	; clear pixel	;@6C11
-L6C14:	mov bh, 0	;@6C14
+MoveStars_PlotNew:	mov bh, 0	;@6C14
 	mov bl, byte ptr StarIndex	;@6C16
 	mov si, bx	;@6C1A
 	mov al, byte ptr StarNewX	;@6C1C
@@ -341,21 +341,21 @@ MoveStars_Next:	mov bh, 0	;@6C5C
 	je MoveStars_Delay	;@6C6A
 	mov al, byte ptr StarMode	;@6C6C
 	cmp al, 2	;@6C6F
-	jae L6C73	; no effect: jumps to the next line either way	;@6C71
-L6C73:	jmp MoveStars_Loop	;@6C73
+	jae MoveStars_NextStar	; no effect: jumps to the next line either way	;@6C71
+MoveStars_NextStar:	jmp MoveStars_Loop	;@6C73
 ; end of frame: wait StarMode * 16 turns of an empty loop (CPU-speed dependent)
 MoveStars_Delay:	nop	;@6C76
 	mov al, byte ptr StarMode	;@6C77
 	or al, al	;@6C7A
-	je L6C8B	;@6C7C
+	je MoveStars_Done	;@6C7C
 	mov ah, 0	;@6C7E
 	mov cx, ax	;@6C80
-L6C82:	mov bx, 10h	;@6C82
-L6C85:	dec bx	;@6C85
-	jne L6C85	;@6C86
+MoveStars_DelayOuter:	mov bx, 10h	;@6C82
+MoveStars_DelayInner:	dec bx	;@6C85
+	jne MoveStars_DelayInner	;@6C86
 	dec cx	;@6C88
-	jne L6C82	;@6C89
-L6C8B:	ret	;@6C8B
+	jne MoveStars_DelayOuter	;@6C89
+MoveStars_Done:	ret	;@6C8B
 ; a star left the view: give it a new random place (X 0-255, Y 0-127) from StarRnd.
 ; Its old place is still in StarXs/StarYs[SI], so MoveStars_Plot erases it correctly.
 MoveStars_NewStar:	nop	;@6C8C

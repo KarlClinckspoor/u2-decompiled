@@ -36,7 +36,7 @@ ToggleSpaceBleep:	nop	;@7242
 	je ToggleBleep_On	;@7249
 	call SpaceSpeakerOff	;@724B
 	mov word ptr cs:BleepCountdown, 0E0h	; silent for E0h star moves	;@724E
-	jmp L7275	;@7255
+	jmp ToggleBleep_Done	;@7255
 ToggleBleep_On:	call Random	;@7258
 	mov ah, al	;@725B
 	and ax, 1F00h	;@725D
@@ -46,27 +46,27 @@ ToggleBleep_On:	call Random	;@7258
 	call SpaceSpeakerOn	;@7268
 	call HoldTone	; set the pitch, short delay	;@726B
 	mov word ptr cs:BleepCountdown, 18h	; bleep for 18h star moves	;@726E
-L7275:	ret	;@7275
+ToggleBleep_Done:	ret	;@7275
 ;------------------------------------------------------------------------------
 ; SpaceSpeakerOn: turn the PC speaker on (tone divisor BX, via StartTone) unless it is on
 ; already. In: BX = PIT divisor. Out: SpeakerIsOff = 0 (on). Uses: AX.
 ;------------------------------------------------------------------------------
 SpaceSpeakerOn:	nop	;@7276
 	cmp byte ptr cs:SpeakerIsOff, 0FFh	;@7277
-	jne L7288	;@727D
+	jne SpaceSpeakerOn_Done	;@727D
 	call StartTone	;@727F
 	mov byte ptr cs:SpeakerIsOff, 0	;@7282
-L7288:	ret	;@7288
+SpaceSpeakerOn_Done:	ret	;@7288
 ;------------------------------------------------------------------------------
 ; SpaceSpeakerOff: turn the PC speaker off (StopTone) unless it is off already.
 ; Out: SpeakerIsOff = FFh (off). Uses: AX.
 ;------------------------------------------------------------------------------
 SpaceSpeakerOff:	nop	;@7289
 	cmp byte ptr cs:SpeakerIsOff, 0	;@728A
-	jne L729B	;@7290
+	jne SpaceSpeakerOff_Done	;@7290
 	call StopTone	;@7292
 	mov byte ptr cs:SpeakerIsOff, 0FFh	;@7295
-L729B:	ret	;@729B
+SpaceSpeakerOff_Done:	ret	;@729B
 	db 0h,0h,0h,0h	; unused padding	;@729C
 ;------------------------------------------------------------------------------
 ; MinaxDead: Minax is dead: the end of the game. Called from the attack code (CMDAL
