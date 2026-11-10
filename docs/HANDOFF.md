@@ -278,7 +278,7 @@ inside one module and add the EXTRN/PUBLIC lines.
    checkable by playing: Magic Missile's extra point (monster hit points are never shown),
    Steal's alarm on a stale slot; these and the other reading-only bugs would need a debugger
    or a memory dump. Items for a test (spells, armour, wand, torches) can be set in the PLAYER
-   record too (FINDINGS has the offsets via `syms.py`: file offset = D address - 36h). Test trick: a character can be placed anywhere by editing
+   record too (file offset = the D address from `syms.py` minus 36h). Test trick: a character can be placed anywhere by editing
    SurfaceX/SurfaceY (bytes 24h/25h) of the PLAYER file in the play directory, never in gamedata/.
    The game empties the keyboard buffer on every key: send keys about 0.8 s apart.
 3. Optional: a port (the u4/u6 `port` directories are models). The speed-dependent delay
