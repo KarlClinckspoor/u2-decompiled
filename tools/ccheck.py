@@ -323,6 +323,7 @@ def check(path, table, errors):
                 bad = True
             else:
                 starts.append(e.lineno - 1)
+                covered[s.module].add(e.name.upper())       # a label that is part of this function
         if bad:
             continue
         region = []

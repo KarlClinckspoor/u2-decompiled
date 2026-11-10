@@ -85,6 +85,8 @@ extern u8 WeaponCounts[10];     /* D:0076  weapons 0-9 (0 = hands, 9 = the quick
 extern u8 ArmourCounts[7];      /* D:0096  armour 0-6 (0 = skin)                                */
 extern u8 SpellCounts[10];      /* D:00B6  spells 1-9 (index 0 unused)                          */
 extern u8 ItemCounts[16];       /* D:00D6  items 0-15: 0 ring, 1 wand, 2 staff, 3 boots, 5 helms, 13 strange coins... */
+#define Boots        ItemCounts[3]
+#define Cloaks       ItemCounts[4]
 #define Wands        ItemCounts[1]
 #define Staffs       ItemCounts[2]
 #define Helms        ItemCounts[5]
@@ -93,6 +95,7 @@ extern u8 ItemCounts[16];       /* D:00D6  items 0-15: 0 ring, 1 wand, 2 staff, 
 #define BrassButtons ItemCounts[11]
 #define BlueTassles  ItemCounts[12]
 #define StrangeCoins ItemCounts[13]
+#define GreenIdols   ItemCounts[14]
 #define TriLithium   ItemCounts[15]
 
 /* The people and monsters of the current map, slots 1-31 (slot 0 holds the town's alarm flag in
@@ -102,6 +105,9 @@ extern u8 MonsterY[32];         /* D:0157                                       
 extern u8 MonsterHP[32];        /* D:0177  hit points                                           */
 extern u8 MonsterUnder[32];     /* D:01B7  the tile under it (outdoors); the dungeon level it is on (underground) */
 extern u8 MonsterTile[32];      /* D:0197  map code of the monster, 0 = free slot               */
+extern u8 MonsterStepX[32];     /* D:01F7  a wandering monster's step; scratch for the new position underground */
+extern u8 MonsterStepY[32];     /* D:0217 */
+extern u8 *MapBufPtr;           /* D:0472  the map buffer: the 64x64 map, or 16 dungeon levels of 256 bytes */
 extern u8 MonsterMood[32];      /* D:01D7  80h + n = talks (talk file string n); 1 = hostile    */
 extern u8 TimeStopTurns;        /* D:026A  turns of stopped time left                           */
 
@@ -147,6 +153,17 @@ void DistToPlayer(u8 slot);             /* C:4F36  DeltaX, DeltaY = player minus
 void DirToPlayer(u8 slot);              /* C:4F11  DeltaX, DeltaY = the sign of that, the short way round the map */
 u8   AbsOf(u8 x);                       /* C:50EF  the absolute value of a signed byte             */
 void SpellParalyzeLegs(void);           /* C:0E70  what monsters cast at the player (EVENTS.ASM)    */
+void MinaxCurse(void);                  /* C:0F8E  */
+void TownTurn(void);                    /* C:101C  the code behind the three TownTurn entries       */
+void SpawnDungeonMonsters(void);        /* C:147F  */
+void DirToPlayerDungeon(u8 slot);       /* C:152E  */
+void DungeonMonsterAttack(u8 slot);     /* C:1308  */
+void EatFood(u8 hundredths);            /* C:12DB  food drops by this many hundredths (BCD); starves below 0 */
+u8   ReadCellIfSameLevel(u8 slot);      /* C:143C  the dungeon cell at LookX/LookY on the monster's level if it is the player's, else FFh */
+u8   ReadMonsterCell(u8 slot);          /* C:144C  the same without the level test                  */
+void MoveMonsterToTarget(u8 slot);      /* C:2201  moves a monster to LookX/LookY (INPUT.ASM)       */
+void ClearViewArea(void);               /* C:4B4E  */
+void UpdateDungeonView(void);           /* C:6000  draws the 3D view and fills TileHere..TileSouth  */
 void SpellParalyzeArms(void);           /* C:0EC2 */
 void SpellMagicMissile(void);           /* C:0F12 */
 void SpellSleep(void);                  /* C:0F48 */

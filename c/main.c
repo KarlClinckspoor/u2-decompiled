@@ -255,8 +255,11 @@ void EndCommandBeep(void)
 /* asm: EndCommand @0A33
  *
  * The end of every command: a new line, the turn's counters cleared, then the monsters' turn
- * for this kind of map, then EndTurn. (Each of the monsters' routines used to end with a jump to
- * EndTurn; here they return and it is called once.) */
+ * for this kind of map. Outdoors, in villages, townes and castles that is followed by EndTurn (the
+ * assembly's routines jump to it; here they return and it is called once). A tower or dungeon does
+ * not use EndTurn at all: its turn does the torch, the view and the food itself, and applies the
+ * damage as the monsters hit (see events.c), so the paralysis and sleep timers of EndTurn do not
+ * count down there. */
 void EndCommand(void)
 {
     PutChar('\n');
@@ -267,8 +270,8 @@ void EndCommand(void)
     case 1:  TownTurnVillage();     break;
     case 2:  TownTurnTowne();       break;
     case 3:  TownTurnCastle();      break;
-    case 4:  DungeonTurnTower();    break;
-    case 5:  DungeonTurnDungeon();  break;
+    case 4:  DungeonTurnTower();    return;
+    case 5:  DungeonTurnDungeon();  return;
     default: OutdoorMonsters();     break;          /* 0: outdoors */
     }
     EndTurn();

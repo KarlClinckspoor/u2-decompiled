@@ -4,9 +4,12 @@ A **reading aid**: for a routine in `../src`, "this is roughly what it does, wri
 programmer would". It is **not a port**, **not byte-matching**, and **has never been run against
 the game**. The assembly is the ground truth; where the two disagree, the C is wrong.
 
-Status: three modules so far, every routine of each: `shops.c` = `src/SHOPS.ASM`, `cmdal.c` =
-`src/CMDAL.ASM` (the commands A to L, with the fight and the ladder code) and `cmdmz.c` =
-`src/CMDMZ.ASM` (the commands M to Z).
+Status: five modules so far, every routine of each:
+`main.c` = `src/MAIN.ASM` (the main loop and the turn), `events.c` = `src/EVENTS.ASM` (what monsters do
+to the player), `cmdal.c` = `src/CMDAL.ASM` (commands A to L, the fight, the ladder code), `cmdmz.c` =
+`src/CMDMZ.ASM` (commands M to Z) and `shops.c` = `src/SHOPS.ASM`. Not yet: START, INPUT, LOAD, MOVE,
+DUNGEON, SCREEN, TEXTIO, CHARGEN, MAPVIEW, SOUND, VIEW3D, SPACE, ENDGAME (the data U2DATA is
+declared in `u2.h` as far as the five modules use it).
 
 ## Rules
 
@@ -27,6 +30,10 @@ Status: three modules so far, every routine of each: `shops.c` = `src/SHOPS.ASM`
   BCD arithmetic is `bcd_add` / `bcd_sub` (`bcd.h`), literal models of `clc / adc / daa` and
   `sub / das`, so counts wrap 99 -> 00 like the game's; `bcd_adc` carries the carry flag for code
   that chains additions (CmdOffer's attribute gift, where the leaked carry is a real quirk).
+- **The turn.** The assembly's chain of jumps (every command ends `jmp EndCommand`, the monsters'
+  loops jump on to EndTurn, EndTurn jumps back to MainLoop) becomes returns: `MainLoop` calls
+  `EndCommand` after each pass, which runs the monsters' turn. A jump the C turns into a return
+  is listed in the anchor: `returns: EndTurn MainLoop`.
 - **What it leaves out:** the timing loops, the screen, the DOS file calls. `u2.h` declares what
   the C files need from them.
 
@@ -35,6 +42,8 @@ Status: three modules so far, every routine of each: `shops.c` = `src/SHOPS.ASM`
 ```
 python3 tools/ccheck.py --cc gcc
 ```
+
+(The compiler: MSYS2's gcc at `C:\msys64\mingw64\bin` if it is not on the PATH.)
 
 checks, for every anchored item, that the symbol exists at that address, that a function prints
 exactly the same texts (a different order is accepted and reported as "reordered") and calls the

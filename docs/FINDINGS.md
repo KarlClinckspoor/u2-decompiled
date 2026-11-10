@@ -96,6 +96,22 @@ are found by reading only.
   LightTurns (D_0026) = torch/Light turns left (150); the view is drawn only while it is
   nonzero. Traps happen only when a random byte is below the level (never on level 0); without
   tools a trap kills.
+- Underground monsters (EVENTS): slot n belongs to level n / 2, so each level has two slots and
+  the deepest level holds slots 30 and 31. Every dungeon turn each free slot (31 down to 1) gets a
+  random odd x and y; if that cell is empty, a random kind 1-7 is made (an eighth outcome is
+  none) but only if 2 (kind - 1) <= level: level 0 has orcs only, level 2 adds ghosts, level 4
+  carrion creepers, 6 vipers, 8 gremlins, 10 minotaurs, 12 and deeper balrons. Hit points =
+  ((2 x kind + level) x 8) OR 10h. Monsters step towards the player, x before y, never through
+  a wall or another monster, and only on the player's own level; a ghost, gremlin or balron
+  uses its special attack one time in four. The tower and dungeon turn does not use MAIN's
+  EndTurn (so the paralysis and sleep timers of EndTurn do not count down there: the sleep
+  from a balron is run off by the dungeon loop itself); the torch (one turn of light per turn,
+  "IT'S DARK!" at 0) and 0.10 food per turn are done in the dungeon turn.
+- Saves against the monsters' spells (EVENTS): magic boots (legs), a magical cloak (arms) and
+  the green idol (sleep) each save three times in four, and only if owned; a failed save lasts
+  0-15 turns. Minax within 3 squares costs 100 hit points a turn. In towns slot 0 is a monster
+  like the others (the town turn runs slots 31 down to 0), and its mood doubles as the alarm
+  flag that CmdSteal tests.
 - Shops by map quarter (x/y below or above 20h): in a towne weapons, armour, pub, transport;
   elsewhere oracle, food, wizard, cleric. Prices: CalcPrice, lowered by intelligence + charisma.
 - The turn (MAIN): passing (space, or no key for 64 x 256 polls) costs 0.10 food, a step more
