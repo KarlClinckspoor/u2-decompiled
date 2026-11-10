@@ -198,7 +198,8 @@ Offer_Weapon:	call Random	; random	;@3D52
 	call PrintInline	;@3D68
 	db 48h,45h,52h,45h,20h,54h,41h,4Bh,45h,20h,54h,48h,49h,53h,21h,0h	;@3D6B
 	jmp EndCommand	;@3D7B
-; Any other talk number: 6 in 8, attribute 0-5 (strength..intelligence) + 4*n.
+; Any other talk number: 6 in 8, attribute 0-5 (strength..intelligence) + 4*n. The four additions
+; share one carry (no clc between them), so passing 99 leaks one extra into the next addition.
 Offer_Attribute:	call Random	;@3D7E
 	and al, 7	;@3D81
 	cmp al, 6	;@3D83

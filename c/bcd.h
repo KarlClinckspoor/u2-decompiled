@@ -1,31 +1,63 @@
-/* bcd.h -- the 8086's packed BCD add, as the assembly uses it.
+/* bcd.h -- the 8086's packed BCD arithmetic, as the assembly uses it.
  *
- * The 6502 original did decimal arithmetic with SED/ADC; the 8086 port does it with
- *     clc / adc al, x / daa
- * so every "count += 1" in the game is this operation, and it WRAPS: 99 + 1 = 00 (the carry
- * out is thrown away). This is a literal model of ADC + DAA, so it also gives the same answer as
- * the real instructions when an operand is not valid BCD (a hand-edited save, say).
+ * The 6502 original did decimal arithmetic with SED/ADC/SBC; the 8086 port does it with
+ *     clc / adc al, x / daa          (add)
+ *     stc / cmc / sbb al, x / das    (subtract; stc+cmc just clears the carry)
+ * so every "count += 1" in the game is this, and it WRAPS: 99 + 1 = 00 and 00 - 1 = 99 (the
+ * carry out is thrown away). These are literal models of ADC+DAA and SUB+DAS, so they give the
+ * same answer as the real instructions even when an operand is not valid BCD (a hand-edited save).
+ *
+ * Some code chains additions WITHOUT clearing the carry in between (CmdOffer's attribute gift):
+ * then a decimal overflow leaks one extra into the next addition. bcd_adc is for that.
  */
 #ifndef U2_BCD_H
 #define U2_BCD_H
 
 #include <stdint.h>
 
-/* clc; mov al, a; adc al, b; daa   (returns AL; the carry out is dropped) */
-static inline uint8_t bcd_add(uint8_t a, uint8_t b)
+/* adc al, b / daa   with *cf the carry flag, in and out; returns AL */
+static inline uint8_t bcd_adc(uint8_t a, uint8_t b, int *cf)
 {
-    unsigned sum = (unsigned)a + b;
+    unsigned sum = (unsigned)a + b + (unsigned)(*cf != 0);
     uint8_t al = (uint8_t)sum;
-    int cf = sum > 0xFF;                       /* CF after ADC */
-    int af = ((a & 15) + (b & 15)) > 15;       /* AF after ADC */
+    int cf_adc = sum > 0xFF;                                  /* CF after ADC */
+    int af = ((a & 15) + (b & 15) + (*cf != 0)) > 15;         /* AF after ADC */
     uint8_t old_al = al;
-    int old_cf = cf;
+    int out_cf = 0;
 
     /* DAA, as Intel's manual defines it */
-    if ((al & 15) > 9 || af)
+    if ((al & 15) > 9 || af) {
+        out_cf = cf_adc || ((unsigned)al + 6 > 0xFF);
         al = (uint8_t)(al + 6);
-    if (old_al > 0x99 || old_cf)
+    }
+    if (old_al > 0x99 || cf_adc) {
         al = (uint8_t)(al + 0x60);
+        out_cf = 1;
+    }
+    *cf = out_cf;
+    return al;
+}
+
+/* clc / adc al, b / daa   (the carry out is dropped) */
+static inline uint8_t bcd_add(uint8_t a, uint8_t b)
+{
+    int cf = 0;
+    return bcd_adc(a, b, &cf);
+}
+
+/* stc / cmc / sbb al, b / das   =   sub al, b / das   (the borrow out is dropped) */
+static inline uint8_t bcd_sub(uint8_t a, uint8_t b)
+{
+    uint8_t al = (uint8_t)(a - b);
+    int cf_sub = a < b;                                       /* CF after SUB */
+    int af = (a & 15) < (b & 15);                             /* AF after SUB */
+    uint8_t old_al = al;
+
+    /* DAS, as Intel's manual defines it */
+    if ((al & 15) > 9 || af)
+        al = (uint8_t)(al - 6);
+    if (old_al > 0x99 || cf_sub)
+        al = (uint8_t)(al - 0x60);
     return al;
 }
 

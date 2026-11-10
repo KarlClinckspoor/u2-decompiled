@@ -14,9 +14,13 @@ function or table that is anchored with a comment line
 it checks that
   - NAME is a symbol of src/ and ADDR is its original address (tools/syms.py);
   - a FUNCTION prints exactly the texts the routine prints (the strings after `call PrintInline`),
-    in the same order, character for character (8Dh and 0Dh read as '\\n', bit 7 ignored);
+    character for character (8Dh and 0Dh read as '\\n', bit 7 ignored). The same texts in a
+    different order are accepted (the C is structured as a programmer would, the assembly in
+    the order of its jumps) and reported as "reordered";
   - every routine the assembly calls or jumps to (outside the routine itself) is called from the
-    C function at least as many times (the C may call more: helpers; ALIASES maps renamed ones);
+    C function at least as many times (the C may call more: helpers; ALIASES maps renamed ones;
+    `jmp EndCommandBeep` counts as a call of Beep). Where a C loop replaces repeated assembly,
+    the anchor says how many textual calls the assembly has in excess: `unrolled: PutChar-5`;
   - a TABLE (`static const char X[] = "...";`) holds the same bytes as the assembly's db lines.
 It also lists the routines of the same modules that have no C yet.
 What it cannot check: the logic, the numbers, the order of the calls. Exit status 1 on any error.
@@ -32,10 +36,11 @@ import syms
 
 # asm name -> the C name that stands for it
 ALIASES = {'ReadKey': 'ReadAsciiKey',            # ReadKey repeated until an ASCII key
+           'EndCommandBeep': 'Beep',             # the error beep, then the end of the turn
            'PrintNth_Skip': 'PrintNthString'}    # the loop PrintTalkString and PrintCsTblString share
-IGNORED_CALLEES = {'PrintInline', 'EndCommand', 'EndCommandBeep'}   # strings are compared instead / the turn ends
+IGNORED_CALLEES = {'PrintInline', 'EndCommand'}   # strings are compared instead / the turn ends
 KEYWORDS = {'if', 'while', 'for', 'switch', 'return', 'sizeof', 'else', 'do', 'case', 'goto'}
-ANCHOR = re.compile(r'^/\*\s*asm:\s*(\w+)\s*@([0-9A-Fa-f]{4})', re.M)
+ANCHOR = re.compile(r'^/\*\s*asm:\s*(\w+)\s*@([0-9A-Fa-f]{4})([^\n]*)', re.M)
 RULE = re.compile(r'^;-{20,}')
 
 
@@ -230,16 +235,19 @@ def check(path, table, errors):
     for m in ANCHOR.finditer(text):
         name, addr = m.group(1), int(m.group(2), 16)
         end = text.index('*/', m.start()) + 2
-        anchors.append((name, addr, m.start(), end))
+        notes = {}
+        if 'unrolled:' in m.group(3):
+            notes = {k: int(v) for k, v in re.findall(r'(\w+)-(\d+)', m.group(3).split('unrolled:', 1)[1])}
+        anchors.append((name, addr, m.start(), end, notes))
     # anchored labels per module (to cut routine extents)
     placed = {}
-    for name, addr, _, _ in anchors:
+    for name, addr, _, _, _ in anchors:
         s = table.get(name.upper())
         if s:
             placed.setdefault(s.module, []).append(s.lineno)
     covered = {}
     shown = os.path.relpath(path, ROOT)
-    for name, addr, start, end in anchors:
+    for name, addr, start, end, notes in anchors:
         where = '%s: %s @%04X' % (shown, name, addr)
         s = table.get(name.upper())
         if not s:
@@ -276,22 +284,27 @@ def check(path, table, errors):
         region = lines[first:stop]
         ok = True
         want, got = asm_texts(region), c_texts(body)
+        reordered = False
         if want != got:
-            ok = False
-            for k in range(max(len(want), len(got))):
-                a = want[k] if k < len(want) else None
-                b = got[k] if k < len(got) else None
-                if a != b:
-                    errors.append('%s: text #%d differs\n    asm: %r\n    C:   %r' % (where, k + 1, a, b))
-                    break
+            if sorted(want) == sorted(got):
+                reordered = True
+            else:
+                ok = False
+                a_only = list((collections.Counter(want) - collections.Counter(got)).elements())
+                c_only = list((collections.Counter(got) - collections.Counter(want)).elements())
+                errors.append('%s: the texts differ\n    only in the assembly: %r\n    only in the C:        %r'
+                              % (where, a_only, c_only))
         have = c_callees(body)
         calls = asm_callees(region)
+        for k, v in notes.items():
+            calls[k] -= v
         missing = ['%s (%d, C has %d)' % (c, n, have[c]) for c, n in sorted(calls.items()) if have[c] < n]
         if missing:
             ok = False
             errors.append('%s: the assembly calls more often: %s' % (where, ', '.join(missing)))
         if ok:
-            print('ok  %-34s %d texts, %d calls' % (name + ' @%04X' % addr, len(got), sum(calls.values())))
+            print('ok  %-34s %d texts%s, %d calls' % (name + ' @%04X' % addr, len(got),
+                  ' (reordered)' if reordered else '', sum(calls.values())))
     # what has no C yet
     for mod, done in sorted(covered.items()):
         rs = routines(syms.read(mod))

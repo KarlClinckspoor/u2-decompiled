@@ -220,7 +220,7 @@ Git repo (master), working directly in `C:\Users\karl9\Downloads\Claude\u2-decom
 |---|---|
 | `src/*.ASM` | the game in 19 modules (table above), the source of truth: edit by hand |
 | `src/u2.lnk` | link order, one module per line |
-| `c/` | the game read as C: a reading aid, not a port and not byte-matching (see `c/README.md`). Pilot: `shops.c` = SHOPS.ASM, `u2.h` the state and routines it needs, `bcd.h` the BCD add |
+| `c/` | the game read as C: a reading aid, not a port and not byte-matching (see `c/README.md`). `shops.c` = SHOPS.ASM, `cmdmz.c` = CMDMZ.ASM, `u2.h` the state and routines they need, `bcd.h` the BCD add/subtract |
 | `tools/ccheck.py` | checks `c/*.c` against src/: every function/table is anchored `/* asm: NAME @ADDR */`; same printed texts in order, same calls (counts), tables byte for byte; `--cc gcc` also compiles. Cannot check logic. Mutation-tested (a changed letter, address, call count or table byte is caught) |
 | `tools/build.py` | assemble each module (MASM 4.00, or `ASM=MASM3`), LINK 3.05 with map, postlink, check the sha1 of the whole file; exediff on a mismatch. Output in `build/u2/`. `build.link(dir, edit)` is the reusable part |
 | `tools/shift.py` | relocation test: `shift.py [--code N] [--data M] [--at MODULE]` builds with padding inserted at the start of the code (or of MODULE) and of the data, and checks that only addresses moved; leaves a runnable `build/shift/ULTIMAII.EXE` |
@@ -283,9 +283,9 @@ inside one module and add the EXTRN/PUBLIC lines.
    record too (file offset = the D address from `syms.py` minus 36h). Test trick: a character can be placed anywhere by editing
    SurfaceX/SurfaceY (bytes 24h/25h) of the PLAYER file in the play directory, never in gamedata/.
    The game empties the keyboard buffer on every key: send keys about 0.8 s apart.
-3. The C reading aid (`c/`): the SHOPS pilot is done and checked; the next modules are CMDMZ
-   and CMDAL (the commands), then the rest in the order of the main loop. Judge the pilot first
-   (c/README.md says what it can and cannot check). Compiler: MSYS2's gcc is at
+3. The C reading aid (`c/`): SHOPS and CMDMZ are done and checked; next CMDAL (commands A-L),
+   then the rest in the order of the main loop (c/README.md says what the checks can and cannot
+   do). Compiler: MSYS2's gcc is at
    `C:\msys64\mingw64\bin` (not on the PATH).
 4. Optional: a port (the u4/u6 `port` directories are models; the C could seed it). The speed-dependent delay
    loops and FCB I/O are what a port must replace.

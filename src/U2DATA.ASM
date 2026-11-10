@@ -115,7 +115,7 @@ TextRightCol label byte	; last column of the text window (inclusive): wrap and s
 	db 0h,0h,0h,0h,0h
 PlayerRecord label byte	; start of the PLAYER file image, 100h bytes (SaveGame writes it)
 	db 0h,0h,0h,0h,0h,0h,0h,0h,0h,0h,0h,0h,0h,0h,0h,0h
-PlayerSex label byte	; 1 = female: "SISTER" at SHOPS 1879 (TEXTIO 506F prints FEMALE)
+PlayerSex label byte	; the letter 'M' or 'F' (CHARGEN 5751; TEXTIO PrintSex tests 'M'). SHOPS 1879 tests = 1: a bug
 	db 0h
 PlayerClass label byte	; 0-3 fighter/cleric/wizard/thief (CHARGEN 5959); figure = 78h+2*class 080D
 	db 0h

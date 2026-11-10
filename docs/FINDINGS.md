@@ -19,7 +19,15 @@ are found by reading only.
   ENOUGH TO WIELD!". Wear too: with strength 30 (30h = 48) reflect armour (5, limit 40) is worn
   ("REFLECT READY."), power armour (6, limit 48) gets "THOU ART NOT STRONG ENOUGH TO WEAR!".
 - **Offer's attribute gift** (ALAKAZAM) adds 4 x the amount with no cap: an attribute can wrap
-  past 99.
+  past 99. And the four additions share one carry (a single `clc`, then `adc`/`daa` four times),
+  so when the attribute passes 99 the carry leaks into the next addition: 95 + 4 x 5 comes out as
+  16, not 15. Found writing c/cmdmz.c; the C model (`bcd_adc`) reproduces it. **Checked in play**:
+  in New San Antonio (era 3's towne) all six attributes at 95, Offer 500 gold to the merchant at
+  (10,57) (talk 84h): "ALAKAZAM!", and Ztats showed STAMINA-16, the others still 95.
+- **Cleric's shop greeting**: it tests PlayerSex = 1 for "SISTER", but character generation
+  stores the letter 'M' or 'F' (PrintSex tests 'M'), so "SISTER" is unreachable: a female cleric
+  is greeted as BROTHER. Found by reading while writing c/shops.c; the only writer of PlayerSex is
+  CHARGEN 5751.
 - **Steal's alarm** (1 in 8) makes monster Temp20 hostile, but Steal never sets Temp20.
 - **Unlock** only looks east or west: doors open only sideways. Harmless in practice: of the 99
   locked doors (map code A0h, drawn as the letter I) in all town and castle maps, 96 can only be

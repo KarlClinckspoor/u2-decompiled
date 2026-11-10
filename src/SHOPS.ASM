@@ -261,7 +261,8 @@ Food_Buy:	call PrintInline	; "YES, NO ONIONS AND TO GO PLEASE!"	;@17F2
 ; ShopClericSpells: the clerics' magic store (villages and castles). Only for clerics
 ; (PlayerClass = 1). Spells 1-6: light, ladder down, ladder up, passwall, surface,
 ; prayer. Sells five of the chosen spell for the price of item n (CalcPrice) and
-; adds 5 (BCD, wraps past 99) to its count SpellCounts[n].
+; adds 5 (BCD, wraps past 99) to its count SpellCounts[n]. BUG: the greeting tests PlayerSex = 1
+; for "SISTER", but the sex is stored as the letter 'M' or 'F', so every cleric is a BROTHER.
 ;------------------------------------------------------------------------------
 ShopClericSpells:	nop	;@1841
 	mov al, byte ptr PlayerClass	;@1842
@@ -276,7 +277,7 @@ Cleric_Welcome:	nop	;@1869
 	call PrintInline	; "WELCOME "	;@186A
 	db 57h,45h,4Ch,43h,4Fh,4Dh,45h,20h,0h	;@186D
 	mov al, byte ptr PlayerSex	;@1876
-	cmp al, 1	; female?	;@1879
+	cmp al, 1	; female? BUG: PlayerSex is 'M' or 'F', never 1	;@1879
 	je Cleric_Sister	;@187B
 	call PrintInline	; "BROTHER "	;@187D
 	db 42h,52h,4Fh,54h,48h,45h,52h,20h,0h	;@1880

@@ -182,6 +182,8 @@ void ShopClericSpells(void)
         return;
     }
     PrintInline("WELCOME ");
+    /* BUG, as in the original: PlayerSex is the letter 'M' or 'F', never 1, so "SISTER" can
+     * never be said: a female cleric is greeted as BROTHER. */
     if (PlayerSex != 1)
         PrintInline("BROTHER ");
     else
