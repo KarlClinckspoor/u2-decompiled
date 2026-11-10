@@ -21,6 +21,9 @@ it checks that
     C function at least as many times (the C may call more: helpers; ALIASES maps renamed ones;
     `jmp EndCommandBeep` counts as a call of Beep). Where a C loop replaces repeated assembly,
     the anchor says how many textual calls the assembly has in excess: `unrolled: PutChar-5`;
+    `returns: EndTurn MainLoop` says that a jump to these means "return" in this function;
+    `also: @0A18` adds another label of the routine (when the assembly puts other code in between);
+    `check: none` anchors an item (a jump table) without checking its body;
   - a TABLE (`static const char X[] = "...";`) holds the same bytes as the assembly's db lines.
 It also lists the routines of the same modules that have no C yet.
 What it cannot check: the logic, the numbers, the order of the calls. Exit status 1 on any error.
@@ -39,6 +42,7 @@ ALIASES = {'ReadKey': 'ReadAsciiKey',            # ReadKey repeated until an ASC
            'EndCommandBeep': 'Beep',             # the error beep, then the end of the turn
            'PrintNth_Skip': 'PrintNthString'}    # the loop PrintTalkString and PrintCsTblString share
 IGNORED_CALLEES = {'PrintInline', 'EndCommand'}   # strings are compared instead / the turn ends
+REGISTERS = {'AX', 'BX', 'CX', 'DX', 'SI', 'DI', 'BP', 'SP'}     # `jmp bx` is not a named routine
 KEYWORDS = {'if', 'while', 'for', 'switch', 'return', 'sizeof', 'else', 'do', 'case', 'goto'}
 ANCHOR = re.compile(r'^/\*\s*asm:\s*(\w+)\s*@([0-9A-Fa-f]{4})([^\n]*)', re.M)
 RULE = re.compile(r'^;-{20,}')
@@ -196,7 +200,8 @@ def asm_callees(region):
     out = collections.Counter()
     for l in region:
         m = re.match(r'^(?:\w+:)?\s*(?:call|jmp)\s+(?:short\s+)?([A-Za-z_]\w*)\s*(?:;|$)', l.split(';')[0].rstrip() + ';', re.I)
-        if m and m.group(1).upper() not in labels and m.group(1) not in IGNORED_CALLEES:
+        if (m and m.group(1).upper() not in labels and m.group(1) not in IGNORED_CALLEES
+                and m.group(1).upper() not in REGISTERS):
             out[m.group(1)] += 1
     return out
 
@@ -228,6 +233,34 @@ def routines(lines):
 
 # ---- the check ------------------------------------------------------------------------------
 
+def parse_options(rest):
+    """The options after `@ADDR` in an anchor line: also: @ADDR..., returns: NAME..., unrolled: NAME-N...,
+    check: none. Returns a dict."""
+    opts = {'also': [], 'returns': [], 'unrolled': {}, 'none': False}
+    parts = re.split(r'\b(also|returns|unrolled|check):', rest)
+    for k in range(1, len(parts) - 1, 2):
+        key, val = parts[k], parts[k + 1]
+        if key == 'also':
+            opts['also'] = [int(x, 16) for x in re.findall(r'@([0-9A-Fa-f]{4})', val)]
+        elif key == 'returns':
+            opts['returns'] = re.findall(r'[A-Za-z_]\w*', val.split('--')[0].split('*/')[0])
+        elif key == 'unrolled':
+            opts['unrolled'] = {n: int(v) for n, v in re.findall(r'(\w+)-(\d+)', val)}
+        elif key == 'check':
+            opts['none'] = val.strip().startswith('none')
+    return opts
+
+
+def label_at(table, module, addr):
+    """The first label of the module defined at that original address."""
+    best = None
+    for s in table.values():
+        if s.module == module and s.addr == addr and s.seg == 'C' and s.kind == 'NEAR':
+            if best is None or s.lineno < best.lineno:
+                best = s
+    return best
+
+
 def check(path, table, errors):
     text = open(path, encoding='utf-8').read()
     clean = blank_comments(text)
@@ -235,19 +268,20 @@ def check(path, table, errors):
     for m in ANCHOR.finditer(text):
         name, addr = m.group(1), int(m.group(2), 16)
         end = text.index('*/', m.start()) + 2
-        notes = {}
-        if 'unrolled:' in m.group(3):
-            notes = {k: int(v) for k, v in re.findall(r'(\w+)-(\d+)', m.group(3).split('unrolled:', 1)[1])}
-        anchors.append((name, addr, m.start(), end, notes))
-    # anchored labels per module (to cut routine extents)
+        anchors.append((name, addr, m.start(), end, parse_options(m.group(3))))
+    # every anchored label of a module (to cut routine extents), the extra ones of `also:` included
     placed = {}
-    for name, addr, _, _, _ in anchors:
+    for name, addr, _, _, opts in anchors:
         s = table.get(name.upper())
         if s:
             placed.setdefault(s.module, []).append(s.lineno)
+            for a in opts['also']:
+                e = label_at(table, s.module, a)
+                if e:
+                    placed[s.module].append(e.lineno)
     covered = {}
     shown = os.path.relpath(path, ROOT)
-    for name, addr, start, end, notes in anchors:
+    for name, addr, start, end, opts in anchors:
         where = '%s: %s @%04X' % (shown, name, addr)
         s = table.get(name.upper())
         if not s:
@@ -257,6 +291,9 @@ def check(path, table, errors):
             errors.append('%s: the assembly puts it at %s' % (where, '%04X' % s.addr if s.addr is not None else '?'))
             continue
         covered.setdefault(s.module, set()).add(name.upper())
+        if opts['none']:
+            print('ok  %-34s anchored, body not checked' % (name + ' @%04X' % addr))
+            continue
         lines = syms.read(s.module)
         kind, b0, b1 = item_extent(clean, end)
         body = clean[b0:b1]
@@ -276,12 +313,26 @@ def check(path, table, errors):
         if kind != 'function':
             errors.append('%s: an anchor must precede a function or a table, not a declaration' % where)
             continue
-        stop = len(lines)
-        for j in range(first + 1, len(lines)):
-            if RULE.match(lines[j]) or (j + 1) in placed.get(s.module, []):
-                stop = j
-                break
-        region = lines[first:stop]
+        # the routine's extent: from each of its labels to the next rule line or anchored label
+        starts = [first]
+        bad = False
+        for a in opts['also']:
+            e = label_at(table, s.module, a)
+            if e is None:
+                errors.append('%s: no label at @%04X in %s' % (where, a, s.module))
+                bad = True
+            else:
+                starts.append(e.lineno - 1)
+        if bad:
+            continue
+        region = []
+        for f in starts:
+            stop = len(lines)
+            for j in range(f + 1, len(lines)):
+                if RULE.match(lines[j]) or (j + 1) in placed.get(s.module, []):
+                    stop = j
+                    break
+            region += lines[f:stop]
         ok = True
         want, got = asm_texts(region), c_texts(body)
         reordered = False
@@ -296,8 +347,10 @@ def check(path, table, errors):
                               % (where, a_only, c_only))
         have = c_callees(body)
         calls = asm_callees(region)
-        for k, v in notes.items():
+        for k, v in opts['unrolled'].items():
             calls[k] -= v
+        for k in opts['returns']:                   # a jump to these is a plain return in the C
+            calls.pop(k, None)
         # a call of the assembly routine may be a call of the C name or of its alias
         got_n = lambda c: have[c] + (have[ALIASES[c]] if c in ALIASES else 0)
         missing = ['%s (%d, C has %d)' % (c, n, got_n(c)) for c, n in sorted(calls.items()) if got_n(c) < n]

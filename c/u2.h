@@ -43,6 +43,15 @@ extern u8 PlaneFlying;          /* D:054E  FFh while the plane is in the air    
 extern u8 KeyNorth, KeySouth, KeyEast, KeyWest;   /* D:026E-0271  the direction keys' codes     */
 extern u8 ArmsParalyzed;        /* D:026C  turns the arms stay paralysed                        */
 extern u8 PlotX, PlotY;         /* D:0479 D:047A  the pixel PlotPixel draws                     */
+extern u8 TileNorth, TileSouth, TileEast, TileWest;   /* D:0015-0018  the tiles around the player (half codes) */
+extern u8 LegsParalyzed;        /* D:026B  turns the legs stay paralysed                        */
+extern u8 SleepTurns;           /* D:026D  turns of sleep left                                  */
+extern u8 SpawnCounter;         /* D:0060  counts the outdoor spawn attempts; saved with the player */
+extern u8 LastKey;              /* D:005D  the key just read at the prompt                      */
+extern u8 Temp20, Temp21, Temp22;   /* D:0020-0022  scratch. In the turn: attacks made on the player, hits,
+                                       damage; at the prompt: the idle timer (Temp21, Temp22)    */
+extern u16 SpeedSetting;        /* D:0074  the speed setting (a word in the PLAYER record); 0 = never set */
+extern u8 *MonsterBufPtr;       /* D:0474  the buffer the MONSTERS file is read into            */
 
 /* The character. Sex is the letter 'M' or 'F' (character generation stores the key pressed). */
 extern u8 PlayerSex;            /* D:0046                                                       */
@@ -57,10 +66,10 @@ extern u8 Attributes[6];        /* D:004B  strength, agility, stamina, charisma,
 #define Intelligence Attributes[5]
 
 /* Packed BCD, two digits per byte (see bcd.h). */
-extern u8 HitPointsHi;          /* D:0051  hit points / 100                                     */
+extern u8 HitPointsHi, HitPointsLo;     /* D:0051 D:0052  hit points: hundreds, units           */
 extern u8 ExpHi, ExpLo;         /* D:0056 D:0057  experience: ExpHi is the level                */
 extern u8 PlayerRecord[256];    /* D:0036  the PLAYER file image: name, sex, class, race, attributes... */
-extern u8 FoodHi;               /* D:0053  food hundreds                                        */
+extern u8 FoodHi, FoodLo, FoodFrac;     /* D:0053-0055  food: hundreds, units, hundredths        */
 extern u8 GoldHi, GoldLo;       /* D:0058 D:0059  gold: hundreds, units                         */
 
 /* What the player holds and uses. */
@@ -111,6 +120,56 @@ extern u8 TileCacheShown[256];  /* D:0372  the map window as it is on screen    
 
 /* ---- Routines of other modules -------------------------------------------------------------- */
 
+/* The commands (CMDAL.ASM, CMDMZ.ASM), each ends the turn by returning. */
+void CmdAttack(void);  void CmdBoard(void);   void CmdCast(void);       void CmdDescend(void);
+void CmdEnter(void);   void CmdFire(void);    void CmdGet(void);        void CmdHyperspace(void);
+void CmdIgniteTorch(void);  void CmdJump(void);    void CmdKlimb(void);      void CmdLaunch(void);
+void CmdMagic(void);   void CmdNegateTime(void);   void CmdOffer(void);  void CmdPass(void);
+void CmdQuit(void);    void CmdReady(void);   void CmdSteal(void);      void CmdTransact(void);
+void CmdUnlock(void);  void CmdView(void);    void CmdWear(void);       void CmdXit(void);
+void CmdYell(void);    void CmdZtats(void);
+
+/* The turn (MAIN.ASM, EVENTS.ASM, INPUT.ASM, DUNGEON.ASM). */
+void DungeonLoop(void);                 /* C:27C0  one command underground (reads the key, moves or dispatches);
+                                           the caller ends the turn                                */
+void IllegalCommand(void);              /* C:2275  "-ILLEGAL COMMAND!" and the error beep          */
+void DieOfStarvation(void);             /* C:228D  the player dies of hunger                       */
+u8   CheckStep(u8 tile);                /* C:2423  the rules for a step onto this tile (half code): 0 = allowed,
+                                           else refused (the caller steps back)                    */
+void MoveTimeDoor(void);                /* C:26F9  once per turn on the surface                    */
+void TownTurnVillage(void);             /* C:1013  the monsters' turn in a village, towne, castle   */
+void TownTurnTowne(void);               /* C:1014                                                  */
+void TownTurnCastle(void);              /* C:1015                                                  */
+void DungeonTurnTower(void);            /* C:115F  the monsters' turn in a tower, dungeon           */
+void DungeonTurnDungeon(void);          /* C:115E                                                  */
+void MonsterStepToward(u8 slot);        /* C:2122  moves the monster one square along DeltaX/DeltaY */
+void DistToPlayer(u8 slot);             /* C:4F36  DeltaX, DeltaY = player minus monster, not reduced */
+void DirToPlayer(u8 slot);              /* C:4F11  DeltaX, DeltaY = the sign of that, the short way round the map */
+u8   AbsOf(u8 x);                       /* C:50EF  the absolute value of a signed byte             */
+void SpellParalyzeLegs(void);           /* C:0E70  what monsters cast at the player (EVENTS.ASM)    */
+void SpellParalyzeArms(void);           /* C:0EC2 */
+void SpellMagicMissile(void);           /* C:0F12 */
+void SpellSleep(void);                  /* C:0F48 */
+void ThiefStealItem(void);              /* C:0FCD  */
+void SetDefaultSpeed(void);             /* C:06AC  */
+void CalcDelayTbl(void);                /* C:06ED  */
+void AnimateWater(void);                /* C:4AE6  scrolls the water tile's picture one row         */
+void AnimateForceField(void);           /* C:4AF1 */
+void XorPlayerMark(void);               /* C:5255  draws or erases the mark on the player's square  */
+void PlayHurtSound(void);               /* C:5EF2 */
+void HangForever(void);                 /* stands for the endless loop (jmp $) the original ends in  */
+
+/* The turn's own routines (MAIN.ASM), declared here for the C files that call them. */
+void MainLoop(void);
+void DispatchCommand(u8 key);
+void EndCommand(void);
+void EndTurn(void);
+void OutdoorMonsters(void);
+void MonsterTurn(u8 slot);
+void MonsterAttack(u8 slot);
+void PlayerDies(void);                  /* C:0C62  the end of the player; shows "IS DEAD" and hangs */
+void SpawnMonster(void);
+
 /* Printing. A '\n' in a string is the game's carriage return (0Dh/8Dh); PutChar takes either. */
 void PrintInline(const char *text);     /* C:4FDF  text after "call PrintInline" in the assembly   */
 void PutChar(u8 c);                     /* C:53F4  one character at the cursor                     */
@@ -154,7 +213,6 @@ void LoadMapAndMonsters(void);          /* C:2290  loads the map and monster fil
 void LoadTalkFile(void);                /* C:22D5                                                  */
 void LeaveToSurface(void);              /* C:243E  from a town back to the outdoor map             */
 void SpaceFlight(void);                 /* C:6999  the rocket's flight; returns when it lands      */
-void PlayerDies(void);                  /* C:0C62  the end of the player; does not return normally */
 void MinaxDead(void);                   /* C:72A0  the end of the game; never returns              */
 /* C:52CA  read (27h) or write (28h) a file in one block: DOS function, a name of 8 letters, a buffer, a length */
 void ReadWriteFile(u8 dos_function, const char *name8, void *buffer, u16 length);

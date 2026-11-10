@@ -98,6 +98,17 @@ are found by reading only.
   tools a trap kills.
 - Shops by map quarter (x/y below or above 20h): in a towne weapons, armour, pub, transport;
   elsewhere oracle, food, wizard, cleric. Prices: CalcPrice, lowered by intelligence + charisma.
+- The turn (MAIN): passing (space, or no key for 64 x 256 polls) costs 0.10 food, a step more
+  (see below). After every command the monsters move, then EndTurn applies what they did: each
+  hit adds hit points/4 + 1 (doubled on tile type 6) to the turn's damage, and the damage actually
+  taken is (random AND total AND 77h) + 1, so it is a random part of the total, never more than 78.
+  Outdoors a new monster appears about one turn in four when a slot is free, in a fixed rotation
+  by the lowest set bit of SpawnCounter (orc, thief, daemon, sea serpent, fighter, pirate ship,
+  devil, wizard, balron); on the wrong terrain nothing appears and the same kind is tried again.
+  A free slot's x, y and terrain are written before the checks, so a refused spawn leaves stale
+  values behind (harmless outdoors, where tile 0 marks a free slot).
+- GameStart fills the two tile caches with FFh for entries 0 to FEh only (entry FFh is left
+  alone); CmdLaunch and ExitToSurface fill all 256.
 - Movement costs: walking 1 delay and 0.19 food per step, horse 2 delays and 0.38 (slower than
   walking), plane 1 delay and 0.38, frigate free. A gremlin takes 100 food; below 0 is death.
 - In town and dungeon areas each round of hits costs an extra MapType hundred hit points

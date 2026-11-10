@@ -8,7 +8,8 @@
  * same answer as the real instructions even when an operand is not valid BCD (a hand-edited save).
  *
  * Some code chains additions WITHOUT clearing the carry in between (CmdOffer's attribute gift):
- * then a decimal overflow leaks one extra into the next addition. bcd_adc is for that.
+ * then a decimal overflow leaks one extra into the next addition. bcd_adc is for that. Subtractions
+ * of multi-byte numbers (food, hit points) chain the borrow on purpose: bcd_sbb.
  */
 #ifndef U2_BCD_H
 #define U2_BCD_H
@@ -45,20 +46,36 @@ static inline uint8_t bcd_add(uint8_t a, uint8_t b)
     return bcd_adc(a, b, &cf);
 }
 
+/* sbb al, b / das   with *borrow the carry flag, in and out; returns AL. For a plain subtract the
+ * borrow comes in as 0 (the assembly's stc / cmc). Chained subtractions of a multi-byte BCD number
+ * (the food, the hit points) pass the borrow on from byte to byte. */
+static inline uint8_t bcd_sbb(uint8_t a, uint8_t b, int *borrow)
+{
+    int bin = (*borrow != 0);
+    uint8_t al = (uint8_t)(a - b - bin);
+    int cf_sub = (unsigned)a < (unsigned)b + bin;             /* CF after SBB */
+    int af = (a & 15) < (b & 15) + bin;                       /* AF after SBB */
+    uint8_t old_al = al;
+    int out_cf = 0;
+
+    /* DAS, as Intel's manual defines it */
+    if ((al & 15) > 9 || af) {
+        out_cf = cf_sub || (al < 6);
+        al = (uint8_t)(al - 6);
+    }
+    if (old_al > 0x99 || cf_sub) {
+        al = (uint8_t)(al - 0x60);
+        out_cf = 1;
+    }
+    *borrow = out_cf;
+    return al;
+}
+
 /* stc / cmc / sbb al, b / das   =   sub al, b / das   (the borrow out is dropped) */
 static inline uint8_t bcd_sub(uint8_t a, uint8_t b)
 {
-    uint8_t al = (uint8_t)(a - b);
-    int cf_sub = a < b;                                       /* CF after SUB */
-    int af = (a & 15) < (b & 15);                             /* AF after SUB */
-    uint8_t old_al = al;
-
-    /* DAS, as Intel's manual defines it */
-    if ((al & 15) > 9 || af)
-        al = (uint8_t)(al - 6);
-    if (old_al > 0x99 || cf_sub)
-        al = (uint8_t)(al - 0x60);
-    return al;
+    int borrow = 0;
+    return bcd_sbb(a, b, &borrow);
 }
 
 #endif
