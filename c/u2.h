@@ -334,4 +334,13 @@ extern u16 SpaceToneDivisor, SpaceToneStep;   /* words in the code segment (VIEW
 extern char FcbMapName[9], FcbMonName[9], FcbTlkName[9];   /* LOAD's inline file names (load.c); [3] is the letter */
 void ErasePixel(void);                  /* C:4BAA  (SCREEN) the pixel PlotX, PlotY off              */
 void MoveStars(void);                   /* C:6B3D  */
+
+/* SCREEN.ASM */
+extern u16 PlotOriginX, PlotOriginY;    /* D:04BF D:04C1  the corner of the 3D view: 16, 16          */
+extern u8 *TilePtrTbl[64];              /* D:05B0  pointers to the 64 tile pictures (2-byte header, 16 lines of 4 bytes) */
+u8  *VideoByte(u16 segment, u16 offset);    /* the byte at segment:offset of the CGA video memory (banks B800h and BA00h) */
+void BiosSetVideoMode(u8 mode);         /* int 10h AH=0 (clears the screen)                        */
+void BiosSetColour(u8 which, u8 value); /* int 10h AH=0Bh: 0 = background, 1 = palette             */
+void DrawMapWindow(void);               /* C:4AAD  the 20x10 tiles of TileCache that changed        */
+void FillBlock4x4(u16 x, u16 y, u16 pattern);   /* C:4BE0  */
 #endif
