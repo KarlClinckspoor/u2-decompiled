@@ -40,7 +40,8 @@ import syms
 # asm name -> the C name that stands for it
 ALIASES = {'ReadKey': 'ReadAsciiKey',            # ReadKey repeated until an ASCII key
            'EndCommandBeep': 'Beep',             # the error beep, then the end of the turn
-           'PrintNth_Skip': 'PrintNthString'}    # the loop PrintTalkString and PrintCsTblString share
+           'PrintNth_Skip': 'PrintNthString',    # the loop PrintTalkString and PrintCsTblString share
+           'CheckStep_AllowJmp': 'CheckStep_Allow'}   # MOVE: a jmp to the jmp to CheckStep_Allow
 IGNORED_CALLEES = {'PrintInline', 'EndCommand'}   # strings are compared instead / the turn ends
 REGISTERS = {'AX', 'BX', 'CX', 'DX', 'SI', 'DI', 'BP', 'SP'}     # `jmp bx` is not a named routine
 KEYWORDS = {'if', 'while', 'for', 'switch', 'return', 'sizeof', 'else', 'do', 'case', 'goto'}

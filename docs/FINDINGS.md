@@ -32,6 +32,14 @@ are found by reading only.
   15 + 15 pays. Reachable with Offer's attribute gift (see above). Found by reading while writing
   c/input.c; the prices were computed from the C and a separate model (they agree for every sum
   and item 1-12), not seen in play.
+- **A refused step at the map's edge** (StepHorse 2655, StepPlane 260E): the horse's no-marsh rule
+  and the plane's no-woods rule are tested after StepOnFoot has allowed the step, and StepOnFoot's
+  "allowed" (CheckStep_Allow) already wrapped PlayerX/PlayerY to 0-3Fh; MAIN then steps back from
+  the wrapped value. A horse at x = 0 refused marsh at x = 63 is left at x = 40h, off the map;
+  going east, north or south the coordinate becomes 40h or FFh. Probably never seen: the edges of
+  the five Earth surface maps are only water and grass; marsh reaches the edge on MAPG10 and
+  MAPG20, woods on MAPG40, MAPG60, MAPG80 and MAPG90, which matters only if a horse or a plane
+  can be had on a planet. Found by reading while writing c/move.c.
 - **Cleric's shop greeting**: it tests PlayerSex = 1 for "SISTER", but character generation
   stores the letter 'M' or 'F' (PrintSex tests 'M'), so "SISTER" is unreachable: a female cleric
   is greeted as BROTHER. Found by reading while writing c/shops.c; the only writer of PlayerSex is

@@ -126,7 +126,8 @@ void DispatchCommand(u8 key)
  * without a key the turn passes by itself.
  *   space        pass: the turn goes by and food drops by 0.1
  *   arrow keys   one step: the position is changed first and CheckStep judges the square entered
- *                (0 = allowed); if it is refused the position is put back
+ *                (move.c); if it is refused the position is put back; leaving a town or a time door
+ *                ends the turn inside CheckStep (STEP_DONE, the assembly jumps to EndCommand)
  *   A-Z          the command (a command resets the horse's half-turn, LightTurns)
  * A step that is allowed flips LightTurns: on horseback the slow monsters move only every other
  * step (see OutdoorMonsters). Running out of food is death. */
@@ -136,6 +137,7 @@ void MainLoop(void)
     u8 k;
     int i;
     int borrow;
+    u8 step;
 
     for (;;) {
         if (MapType >= 4) {
@@ -188,39 +190,43 @@ void MainLoop(void)
         } else if (k == KeyNorth) {
             PlayerY--;
             PrintInline("NORTH");
-            if (CheckStep(TileNorth) != 0) {
+            step = CheckStep(TileNorth);
+            if (step == STEP_REFUSED) {
                 PlayerY++;                          /* refused: step back */
                 MainLoop_InvalidMove();
-            } else {
+            } else if (step == STEP_ALLOWED) {
                 LightTurns ^= 0xFF;
-            }
+            }                                           /* STEP_DONE: the turn is over already */
         } else if (k == KeySouth) {
             PlayerY++;
             PrintInline("SOUTH");
-            if (CheckStep(TileSouth) != 0) {
+            step = CheckStep(TileSouth);
+            if (step == STEP_REFUSED) {
                 PlayerY--;
                 MainLoop_InvalidMove();
-            } else {
+            } else if (step == STEP_ALLOWED) {
                 LightTurns ^= 0xFF;
-            }
+            }                                           /* STEP_DONE: the turn is over already */
         } else if (k == KeyWest) {
             PlayerX--;
             PrintInline("WEST");
-            if (CheckStep(TileWest) != 0) {
+            step = CheckStep(TileWest);
+            if (step == STEP_REFUSED) {
                 PlayerX++;
                 MainLoop_InvalidMove();
-            } else {
+            } else if (step == STEP_ALLOWED) {
                 LightTurns ^= 0xFF;
-            }
+            }                                           /* STEP_DONE: the turn is over already */
         } else if (k == KeyEast) {
             PlayerX++;
             PrintInline("EAST");
-            if (CheckStep(TileEast) != 0) {
+            step = CheckStep(TileEast);
+            if (step == STEP_REFUSED) {
                 PlayerX--;
                 MainLoop_InvalidMove();
-            } else {
+            } else if (step == STEP_ALLOWED) {
                 LightTurns ^= 0xFF;
-            }
+            }                                           /* STEP_DONE: the turn is over already */
         } else {
             LightTurns = 0;
             DispatchCommand(k);

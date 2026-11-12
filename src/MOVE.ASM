@@ -236,7 +236,7 @@ CheckStep_Paralyzed:	mov al, byte ptr LegsParalyzed	; legs paralyzed (turns left
 	cmp al, 0	;@2523
 	je CheckStep_Transport	;@2525
 	call PrintInline	;@2527
-	db 2Dh,2Dh,50h,41h,52h,41h,4Ch,49h,5Ah,45h,44h,21h,0Dh,0h	; "--PARALYZED!"	;@252A
+	db 2Dh,2Dh,50h,41h,52h,41h,4Ch,49h,5Ah,45h,44h,21h,0Dh,0h	; "--PARALIZED!" (so spelt)	;@252A
 	mov al, 0FFh	; not allowed	;@2538
 	ret	;@253A
 ; By transport.

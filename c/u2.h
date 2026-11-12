@@ -39,6 +39,10 @@ extern u8 OffMapTile;           /* D:0012  the tile drawn beyond the map's edge 
 extern u8 SurfaceX, SurfaceY;   /* D:005A D:005B  the outdoor position, remembered on entering a town */
 extern u8 RocketParked;         /* D:0069  1 = the rocket stands at RocketX/RocketY             */
 extern u8 RocketX, RocketY;     /* D:006A D:006B                                                */
+extern u8 TimeDoorSpot;         /* D:006E  where the time door stands: 0, 2, 4, 6, the offset of its x,y pair
+                                           in the era's row of TimeDoorTbl                         */
+extern u8 TimeDoorUnder;        /* D:0070  the map byte the door covers                         */
+extern const u8 TimeDoorTbl[];  /* C:2798  (DUNGEON.ASM) four x,y pairs per era, the door's places */
 extern u8 PlaneFlying;          /* D:054E  FFh while the plane is in the air                    */
 extern u8 KeyNorth, KeySouth, KeyEast, KeyWest;   /* D:026E-0271  the direction keys' codes     */
 extern u8 ArmsParalyzed;        /* D:026C  turns the arms stay paralysed                        */
@@ -140,8 +144,11 @@ void DungeonLoop(void);                 /* C:27C0  one command underground (read
                                            the caller ends the turn                                */
 void IllegalCommand(void);              /* C:2275  "-ILLEGAL COMMAND!" and the error beep          */
 void DieOfStarvation(void);             /* C:228D  the player dies of hunger                       */
-u8   CheckStep(u8 tile);                /* C:2423  the rules for a step onto this tile (half code): 0 = allowed,
-                                           else refused (the caller steps back)                    */
+u8   CheckStep(u8 tile);                /* C:2423  the rules for a step onto this tile (half code): one of */
+#define STEP_ALLOWED 0                  /*   the step stands                                           */
+#define STEP_REFUSED 0xFF               /*   the caller steps back ("--INVALID MOVE!")                 */
+#define STEP_DONE    1                  /*   the step ended the turn by itself (out of a town, through a time
+                                             door; the assembly's jmp EndCommand): the caller does nothing more */
 void MoveTimeDoor(void);                /* C:26F9  once per turn on the surface                    */
 void TownTurnVillage(void);             /* C:1013  the monsters' turn in a village, towne, castle   */
 void TownTurnTowne(void);               /* C:1014                                                  */
