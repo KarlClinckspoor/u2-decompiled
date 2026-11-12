@@ -343,4 +343,9 @@ void BiosSetVideoMode(u8 mode);         /* int 10h AH=0 (clears the screen)     
 void BiosSetColour(u8 which, u8 value); /* int 10h AH=0Bh: 0 = background, 1 = palette             */
 void DrawMapWindow(void);               /* C:4AAD  the 20x10 tiles of TileCache that changed        */
 void FillBlock4x4(u16 x, u16 y, u16 pattern);   /* C:4BE0  */
+
+/* SOUND.ASM */
+#define ToneDelay DelayTbl[6]           /* D:058C  the delay of a tone's duration unit: entry 6 of the speed-scaled delay table */
+void OutPort(u16 port, u8 value);       /* the CPU's out instruction (ports 42h, 43h: the timer; 61h: the speaker) */
+u8   InPort(u16 port);                  /* the CPU's in instruction                                */
 #endif
