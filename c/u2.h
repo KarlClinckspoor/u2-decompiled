@@ -321,4 +321,17 @@ void GameStart(void);                   /* C:0764  (MAIN) play; never returns   
 void TitleScreen(void);                 /* C:013E  */
 void MainMenu(void);                    /* C:0242  */
 void DemoShow(void);                    /* C:03AF  */
+
+/* SPACE.ASM */
+extern u8 LineEndX, LineEndY;           /* D:047B D:047C  the point the stars fly away from (and the crosshair) */
+extern u8 StarXs[64], StarYs[64];       /* D:04CD D:050D  the stars: X 0-255, Y 0-127               */
+extern u8 StarMode;                     /* D:04C7  0 streaks, 1 erase, 2+ slower with bleeps        */
+extern u8 WarpFrames;                   /* D:04C8  frames left in a phase of the hyperwarp          */
+extern u8 StarIndex;                    /* D:04C9  */
+extern u8 Xeno, Yako, Zabo;             /* D:04CA-04CC  the rocket's coordinates in space, 0-9      */
+extern u8  StarRndSeed, StarRndSeed2;   /* bytes in the code segment (VIEW3D): the star generator   */
+extern u16 SpaceToneDivisor, SpaceToneStep;   /* words in the code segment (VIEW3D): the engine tone and its sweep */
+extern char FcbMapName[9], FcbMonName[9], FcbTlkName[9];   /* LOAD's inline file names (load.c); [3] is the letter */
+void ErasePixel(void);                  /* C:4BAA  (SCREEN) the pixel PlotX, PlotY off              */
+void MoveStars(void);                   /* C:6B3D  */
 #endif
