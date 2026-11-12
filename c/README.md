@@ -4,12 +4,13 @@ A **reading aid**: for a routine in `../src`, "this is roughly what it does, wri
 programmer would". It is **not a port**, **not byte-matching**, and **has never been run against
 the game**. The assembly is the ground truth; where the two disagree, the C is wrong.
 
-Status: five modules so far, every routine of each:
+Status: six modules so far, every routine of each:
 `main.c` = `src/MAIN.ASM` (the main loop and the turn), `events.c` = `src/EVENTS.ASM` (what monsters do
 to the player), `cmdal.c` = `src/CMDAL.ASM` (commands A to L, the fight, the ladder code), `cmdmz.c` =
-`src/CMDMZ.ASM` (commands M to Z) and `shops.c` = `src/SHOPS.ASM`. Not yet: START, INPUT, LOAD, MOVE,
-DUNGEON, SCREEN, TEXTIO, CHARGEN, MAPVIEW, SOUND, VIEW3D, SPACE, ENDGAME (the data U2DATA is
-declared in `u2.h` as far as the five modules use it).
+`src/CMDMZ.ASM` (commands M to Z), `shops.c` = `src/SHOPS.ASM` and `input.c` = `src/INPUT.ASM` (number
+and money entry, the shops' prices, the monsters' step outdoors and in towns). Not yet: START, LOAD,
+MOVE, DUNGEON, SCREEN, TEXTIO, CHARGEN, MAPVIEW, SOUND, VIEW3D, SPACE, ENDGAME (the data U2DATA is
+declared in `u2.h` as far as the six modules use it).
 
 ## Rules
 

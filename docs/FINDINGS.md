@@ -24,6 +24,14 @@ are found by reading only.
   16, not 15. Found writing c/cmdmz.c; the C model (`bcd_adc`) reproduces it. **Checked in play**:
   in New San Antonio (era 3's towne) all six attributes at 95, Offer 500 gold to the merchant at
   (10,57) (talk 84h): "ALAKAZAM!", and Ztats showed STAMINA-16, the others still 95.
+- **Shop prices and high attributes** (CalcPrice, 20C2): the discount counts the significant
+  bits of intelligence + charisma, but the two BCD bytes are added as plain binary and the sum
+  wraps at 100h. Up to 80h (40 + 40) a higher sum is cheaper; 80 + 80 makes 100h, which wraps to
+  0, and the price takes seven more steps of the series than the best one: a dagger costs 0220
+  gold instead of 0008, plate armour 6388 instead of 0220. 95 + 95 (12Ah -> 2Ah) pays what
+  15 + 15 pays. Reachable with Offer's attribute gift (see above). Found by reading while writing
+  c/input.c; the prices were computed from the C and a separate model (they agree for every sum
+  and item 1-12), not seen in play.
 - **Cleric's shop greeting**: it tests PlayerSex = 1 for "SISTER", but character generation
   stores the letter 'M' or 'F' (PrintSex tests 'M'), so "SISTER" is unreachable: a female cleric
   is greeted as BROTHER. Found by reading while writing c/shops.c; the only writer of PlayerSex is
