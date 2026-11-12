@@ -21,6 +21,20 @@ GAMEDIR = os.path.join(ROOT, 'gamedata')
 
 CREATE = '{ESC}C151515151515M11KARL{ENTER}Y'     # 15 in all six, male human fighter, KARL
 
+
+def price_model(item, intelligence, charisma):
+    """CalcPrice (INPUT.ASM 20AB), independently: the BCD series 4, 8, 12, 20 ... for item + 8 - b steps,
+    b the number of significant bits of intelligence + charisma added as plain bytes (carry of item + 8 included)."""
+    s = (intelligence + charisma + (1 if item + 8 > 255 else 0)) & 255
+    bits = 1
+    while s >> bits:
+        bits += 1
+    n = item + 8 - bits
+    cur, prev = 4, 4
+    for _ in range(n):
+        cur, prev = cur + prev, cur
+    return int(str(cur % 10000), 16)
+
 SCENARIOS = [
     # name, keys, strings that must be in the final screen / stop line, PLAYER patch
     ('menu',    '{ESC}', ['CHOICE:', 'stopped: out of keys'], None),
@@ -41,6 +55,38 @@ SCENARIOS = [
     # Start in the towne (map type 2) next to a merchant; Transact east.
     ('merchant', '{ESC}PT{RIGHT}', ['TRANSACT-EAST', 'A MERCHANT SAYS:', 'map type 2'],
      {0x13: 2, 0x14: 2, 0x24: 30, 0x25: 6}),
+    # --- with cheats (see harness.c: {SET:Var=val} and {GOTO:era,type,x,y}) ---
+    # Teleport on the surface: walk-in position of the era's village, then Enter.
+    ('teleport', '{ESC}P{SET:PlayerX=38}{SET:PlayerY=46}E', ['ENTER-VILLAGE', 'map type 1'], None),
+    ('klimb',   '{ESC}P{GOTO:2,4,11,11}K', ['KLIMB', 'TO LEVEL 01', 'map type 4'], None),
+    ('descend', '{ESC}P{GOTO:2,5,11,11}D', ['DESCEND', 'TO LEVEL 01', 'map type 5'], None),
+    # Attack the person at 6,5 of the towne with the best weapon and an agility that always hits:
+    # (8 * 8 + 35h) / 4 = 29 a hit against 60 hit points: the third hit kills.
+    ('combat',  '{ESC}P{GOTO:2,2,5,5}{SET:ReadyWeapon=8}{SET:Attributes[1]=0xFF}A{RIGHT}A{RIGHT}A{RIGHT}',
+     ['HIT!!!', 'KILLED--GOLD+'], None),
+    # The shops of the towne, standing at a counter (T + direction): the pub always gives tip 1
+    # (docs/FINDINGS.md), a drink costs 5.
+    ('pub',     '{ESC}P{GOTO:2,2,10,51}T{UP}1', ['HERE, HAVE A STRONG ONE!', 'THE BARKEEP SAYS:',
+                 "ISN'T THIS A GREAT GAME?", 'GOLD=0395'], None),
+    # CalcPrice for intelligence 20 and charisma 15 (BCD, added as binary: 35h) is 0084 (price_model agrees
+    # below), 400 - 84 = 316.
+    ('horse',   '{ESC}P{GOTO:2,2,51,53}T{UP}Y', ['RIDE SWIFTLY!', 'GOLD=0316'], None),
+    ('horse-price', '{ESC}P{GOTO:2,2,51,53}T{UP}', ['HORSE %04X' % price_model(4, 0x20, 0x15)], None),
+    ('horse-no', '{ESC}P{GOTO:2,2,51,53}T{UP}N', ['O.K. BYE THEN...', 'GOLD=0400'], None),
+    ('poor',    '{ESC}P{GOTO:2,2,51,53}{SET:GoldHi=0}{SET:GoldLo=0x10}T{UP}Y', ['YOU DONT HAVE THAT MUCH!', 'GOLD=0010'], None),
+    # The price quirk of docs/FINDINGS.md: intelligence 80 + charisma 80 wraps to 0, the dearest prices.
+    ('price-quirk', '{ESC}P{GOTO:2,2,51,53}{SET:Attributes[5]=0x80}{SET:Attributes[3]=0x80}T{UP}',
+     ['HORSE %04X' % price_model(4, 0x80, 0x80)], None),
+    # Space: the rocket (PlayerTile 28h), reflect armour and fuel; launch, hyperwarp to Earth's own
+    # coordinates, then H)yperwarp to 1,4,1 (deep space), and L)anding is denied there.
+    ('launch',  '{ESC}P{SET:PlayerTile=0x28}{SET:WornArmour=5}{SET:ItemCounts[15]=0x10}L',
+     ['HYPERWARP ENGAGED!', 'YOU ARE ORBITING EARTH.', 'FUEL=09'], None),
+    ('space-deep', '{ESC}P{SET:PlayerTile=0x28}{SET:WornArmour=5}{SET:ItemCounts[15]=0x10}LH141',
+     ['PREPARE FOR HYPERWARP!', 'YOU ARE IN DEEP SPACE.', 'FUEL=08'], None),
+    ('space-denied', '{ESC}P{SET:PlayerTile=0x28}{SET:WornArmour=5}{SET:ItemCounts[15]=0x10}LH411L',
+     ['REQUEST DENIED!'], None),
+    ('space-land', '{ESC}P{SET:PlayerTile=0x28}{SET:WornArmour=5}{SET:ItemCounts[15]=0x10}LL',
+     ['LANDING REQUESTED!', '(PRESS ANY KEY)'], None),
     # The documented bug (docs/FINDINGS.md): the first Ctrl-Right at the default speed sends the
     # delay table's division out of range.
     ('ctrl-right', '{ESC}P{CTRL-RIGHT}', ['stopped: divide error'], None),

@@ -100,6 +100,75 @@ static long EmptyPolls;             /* polls since the last key, or since the la
 #define KEY_GAP 50                  /* empty polls before the next key arrives */
 static long GiveUp = 3000;             /* empty polls with no keys left: the run is over (env U2_GIVEUP) */
 
+/* ---- Cheats --------------------------------------------------------------------------------- */
+/* Tokens in the key string that change the game's state instead of pressing a key; they run
+ * when the game is idle at a prompt, as if between two commands:
+ *   {SET:Name=value}      a variable of the game (a name of u2.h; Name[i] for an array element;
+ *                         the value in C notation, 0x99 for a BCD 99), e.g. {SET:Torches=0x05}
+ *   {GOTO:zone,type,x,y}  to another place: the map of that era and type is loaded, the player put
+ *                         at x,y (a dungeon or tower: level 0, facing east), and the view redrawn
+ * and the screen is redrawn after each (so {SET:PlayerX=30} is a teleport). */
+#define CHEAT 0x10000u
+static char Cheats[64][96];
+static int NCheats;
+
+static void redraw(void)
+{
+    if (MapType >= 4)
+        UpdateDungeonView();
+    else
+        UpdateMapView();
+}
+
+static void run_cheat(const char *text)
+{
+    char name[64];
+    unsigned long val;
+    int idx = -1, zone, type, x, y;
+    const struct VarEnt *v;
+    unsigned elem;
+
+    fprintf(stderr, "[cheat %s]\n", text);
+    if (sscanf(text, "GOTO:%d,%d,%d,%d", &zone, &type, &x, &y) == 4) {
+        TimeZone = (u8)zone;
+        MapType = (u8)type;
+        PlayerX = (u8)x;
+        PlayerY = (u8)y;
+        LoadMapAndMonsters();
+        if (type >= 1 && type <= 3) {
+            LoadTalkFile();
+            OffMapTile = 4;
+        } else if (type == 0) {
+            OffMapTile = 0xFF;
+        } else {
+            DungeonLevel = 0;
+            FacingDX = 1;
+            FacingDY = 0;
+        }
+        memset(TileCache, 0xFF, 255);
+        memset(TileCacheShown, 0xFF, 255);
+        redraw();
+        return;
+    }
+    if (sscanf(text, "SET:%63[A-Za-z0-9_]=%li", name, (long *)&val) == 2 ||
+        sscanf(text, "SET:%63[A-Za-z0-9_][%d]=%li", name, &idx, (long *)&val) == 3) {
+        for (v = Vars; v->p; v++) {
+            if (strcmp(v->name, name) != 0)
+                continue;
+            elem = idx >= 0 ? 1 : v->size;
+            if (idx >= 0 && (unsigned)idx >= v->size)
+                stop("cheat: index out of range");
+            if (elem > 2)
+                stop("cheat: needs an index");
+            memcpy((u8 *)v->p + (idx >= 0 ? idx : 0), &val, elem);
+            redraw();
+            return;
+        }
+        stop("cheat: no such variable");
+    }
+    stop("cheat: cannot parse");
+}
+
 static void queue_keys(const char *s)
 {
     static const struct { const char *name; unsigned code; } special[] = {
@@ -112,6 +181,17 @@ static void queue_keys(const char *s)
 
     while (*s) {
         found = 0;
+        if (strncmp(s, "{SET:", 5) == 0 || strncmp(s, "{GOTO:", 6) == 0) {
+            const char *e = strchr(s, '}');
+            size_t n;
+            if (!e || NCheats >= 64) { fprintf(stderr, "bad cheat token"); exit(2); }
+            n = (size_t)(e - s) - 1;
+            memcpy(Cheats[NCheats], s + 1, n);
+            Cheats[NCheats][n] = 0;
+            KeyQueue[KeyTail++] = CHEAT | (unsigned)NCheats++;
+            s = e + 1;
+            continue;
+        }
         for (i = 0; i < sizeof special / sizeof special[0]; i++) {
             size_t n = strlen(special[i].name);
             if (strncmp(s, special[i].name, n) == 0) {
@@ -128,6 +208,12 @@ static void queue_keys(const char *s)
 
 bool BiosKeyWaiting(void)
 {
+    while (KeyHead < KeyTail && (KeyQueue[KeyHead] & CHEAT) && EmptyPolls >= KEY_GAP) {
+        unsigned c = KeyQueue[KeyHead++] & 0xFFFF;
+        EmptyPolls = 0;                 /* (a cheat may poll the keyboard: LoadMapAndMonsters does) */
+        run_cheat(Cheats[c]);
+        EmptyPolls = 0;
+    }
     if (KeyHead < KeyTail) {
         if (EmptyPolls >= KEY_GAP)
             return true;
@@ -447,6 +533,13 @@ int main(int argc, char **argv)
     printf("video mode %d, cursor row %d col %d, player at %d,%d, map type %d\n",
            VideoMode, CurRow, CurCol, PlayerX, PlayerY, MapType);
     show_text(stdout);
+    if (getenv("U2_MONSTERS")) {                    /* the monster table, for debugging */
+        int i;
+        for (i = 1; i < 32; i++)
+            if (MonsterTile[i])
+                printf("slot %2d at %2d,%2d hp %3d tile %02X mood %02X\n", i, MonsterX[i], MonsterY[i],
+                       MonsterHP[i], MonsterTile[i], MonsterMood[i]);
+    }
     if (VideoMode == 4) {
         write_png(png);
         printf("picture: %s\n", png);
