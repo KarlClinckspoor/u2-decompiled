@@ -220,8 +220,8 @@ Git repo (master), working directly in `C:\Users\karl9\Downloads\Claude\u2-decom
 |---|---|
 | `src/*.ASM` | the game in 19 modules (table above), the source of truth: edit by hand |
 | `src/u2.lnk` | link order, one module per line |
-| `c/` | the game read as C: a reading aid, not a port and not byte-matching (see `c/README.md`). `main.c` = MAIN.ASM, `events.c` = EVENTS.ASM, `shops.c` = SHOPS.ASM, `cmdal.c` = CMDAL.ASM, `cmdmz.c` = CMDMZ.ASM, `input.c` = INPUT.ASM, `load.c` = LOAD.ASM, `move.c` = MOVE.ASM, `u2.h` the state and routines they need, `bcd.h` the BCD add/subtract |
-| `tools/ccheck.py` | checks `c/*.c` against src/: every function/table is anchored `/* asm: NAME @ADDR */`; same printed texts in order, same calls (counts), tables byte for byte; `--cc gcc` also compiles. Cannot check logic. Mutation-tested (a changed letter, address, call count or table byte is caught) |
+| `c/` | the game read as C: a reading aid, not a port and not byte-matching (see `c/README.md`). `main.c` = MAIN.ASM, `events.c` = EVENTS.ASM, `shops.c` = SHOPS.ASM, `cmdal.c` = CMDAL.ASM, `cmdmz.c` = CMDMZ.ASM, `input.c` = INPUT.ASM, `load.c` = LOAD.ASM, `move.c` = MOVE.ASM, `dungeon.c` = DUNGEON.ASM, `u2.h` the state and routines they need, `bcd.h` the BCD add/subtract |
+| `tools/ccheck.py` | checks `c/*.c` against src/: every function/table is anchored `/* asm: NAME @ADDR */`; same printed texts in order, same calls (counts), tables byte for byte (text tables, and byte arrays in braces); `--cc gcc` also compiles. Cannot check logic. Mutation-tested (a changed letter, address, call count or table byte is caught) |
 | `tools/build.py` | assemble each module (MASM 4.00, or `ASM=MASM3`), LINK 3.05 with map, postlink, check the sha1 of the whole file; exediff on a mismatch. Output in `build/u2/`. `build.link(dir, edit)` is the reusable part |
 | `tools/shift.py` | relocation test: `shift.py [--code N] [--data M] [--at MODULE]` builds with padding inserted at the start of the code (or of MODULE) and of the data, and checks that only addresses moved; leaves a runnable `build/shift/ULTIMAII.EXE` |
 | `tools/play.py` | play a build in a DOSBox window with GOG's settings (CGA, 500 cycles), using a copy of the game files under build/ (`play.py [EXE] [--dir DIR]`) |
@@ -283,10 +283,12 @@ inside one module and add the EXTRN/PUBLIC lines.
    record too (file offset = the D address from `syms.py` minus 36h). Test trick: a character can be placed anywhere by editing
    SurfaceX/SurfaceY (bytes 24h/25h) of the PLAYER file in the play directory, never in gamedata/.
    The game empties the keyboard buffer on every key: send keys about 0.8 s apart.
-3. The C reading aid (`c/`): MAIN, EVENTS, SHOPS, CMDAL, CMDMZ, INPUT, LOAD and MOVE are
-   done and checked; next DUNGEON (the dungeon loop, the time door's walk, the helm map), then the rest (c/README.md says what the checks can and cannot
-   do). Compiler: MSYS2's gcc is at
-   `C:\msys64\mingw64\bin` (not on the PATH).
+3. The C reading aid (`c/`): MAIN, EVENTS, SHOPS, CMDAL, CMDMZ, INPUT, LOAD, MOVE and
+   DUNGEON are done and checked (the game logic); next TEXTIO (keyboard, printing, random numbers,
+   file I/O), CHARGEN, SPACE, ENDGAME, START, and last the screen modules (SCREEN, MAPVIEW,
+   VIEW3D, SOUND) (c/README.md says what the checks can and cannot do). Compiler: MSYS2's gcc
+   is at `C:\msys64\mingw64\bin` (not on the PATH); run ccheck from PowerShell with that folder
+   put first on the PATH (from Git Bash gcc fails without a message).
 4. Optional: a port (the u4/u6 `port` directories are models; the C could seed it). The speed-dependent delay
    loops and FCB I/O are what a port must replace.
 

@@ -24,7 +24,9 @@ it checks that
     `returns: EndTurn MainLoop` says that a jump to these means "return" in this function;
     `also: @0A18` adds another label of the routine (when the assembly puts other code in between);
     `check: none` anchors an item (a jump table) without checking its body;
-  - a TABLE (`static const char X[] = "...";`) holds the same bytes as the assembly's db lines.
+  - a TABLE (`static const char X[] = "...";`) holds the same bytes as the assembly's db lines
+    (read as text, with the final zero); a table of numbers (`const u8 X[] = { 0x1D, ... };`)
+    holds exactly the db bytes, nothing decoded and no final zero.
 It also lists the routines of the same modules that have no C yet.
 What it cannot check: the logic, the numbers, the order of the calls. Exit status 1 on any error.
 
@@ -207,12 +209,16 @@ def asm_callees(region):
     return out
 
 
-def asm_table(lines, start):
+def asm_table_bytes(lines, start):
     bs, i = [], start
     while i < len(lines) and re.match(r'^\s*db\s', lines[i]):
         bs += db_bytes(lines[i])
         i += 1
-    return decode(bs)
+    return bs
+
+
+def asm_table(lines, start):
+    return decode(asm_table_bytes(lines, start))
 
 
 def routines(lines):
@@ -299,6 +305,20 @@ def check(path, table, errors):
         kind, b0, b1 = item_extent(clean, end)
         body = clean[b0:b1]
         first = s.lineno - 1
+        if kind == 'table' and body.strip().startswith('{'):
+            want = asm_table_bytes(lines, first + 1)
+            try:
+                inner = body.strip()[1:body.strip().rindex('}')]
+                got = [int(x, 0) for x in inner.split(',') if x.strip()]
+            except ValueError as e:
+                errors.append('%s: cannot read the table (%s)' % (where, e))
+                continue
+            if got != want:
+                errors.append('%s: table differs\n    asm: %s\n    C:   %s'
+                              % (where, ' '.join('%02X' % b for b in want), ' '.join('%02X' % b for b in got)))
+            else:
+                print('ok  %-34s table, %d bytes' % (name + ' @%04X' % addr, len(want)))
+            continue
         if kind == 'table':
             want = asm_table(lines, first + 1)
             try:

@@ -42,6 +42,7 @@ extern u8 RocketX, RocketY;     /* D:006A D:006B                                
 extern u8 TimeDoorSpot;         /* D:006E  where the time door stands: 0, 2, 4, 6, the offset of its x,y pair
                                            in the era's row of TimeDoorTbl                         */
 extern u8 TimeDoorUnder;        /* D:0070  the map byte the door covers                         */
+extern u8 TimeDoorTimer;        /* D:006F  surface turns until the door moves on (8)            */
 extern const u8 TimeDoorTbl[];  /* C:2798  (DUNGEON.ASM) four x,y pairs per era, the door's places */
 extern u8 PlaneFlying;          /* D:054E  FFh while the plane is in the air                    */
 extern u8 KeyNorth, KeySouth, KeyEast, KeyWest;   /* D:026E-0271  the direction keys' codes     */
@@ -181,6 +182,7 @@ void AnimateWater(void);                /* C:4AE6  scrolls the water tile's pict
 void AnimateForceField(void);           /* C:4AF1 */
 void XorPlayerMark(void);               /* C:5255  draws or erases the mark on the player's square  */
 void PlayHurtSound(void);               /* C:5EF2 */
+void PlayTrapSound(void);               /* C:5E3B */
 void HangForever(void);                 /* stands for the endless loop (jmp $) the original ends in  */
 
 /* The turn's own routines (MAIN.ASM), declared here for the C files that call them. */
@@ -229,7 +231,8 @@ u8   GetMapSquare(void);                /* C:50B3  the map byte at LookX/LookY; 
 u8   FindMonsterInDir(void);            /* C:23E6  the slot (1-31) of the monster next to the player in the
                                            direction DeltaX/DeltaY, 0 if none; sets LookX/LookY to that square */
 void AlertTownGuards(void);             /* C:113A  makes the guards hostile                        */
-void DrawHelmMap(void);                 /* C:29D2  the whole map from above, centred on LookX/LookY */
+void DrawHelmMap(void);                 /* C:29D2  the whole map from above (4x2 pixels a square), for the helm */
+void PlotOverviewDot(u8 dot_col, u8 dot_row);   /* C:2B65  (CMDAL) one dot of the square DeltaX, DeltaY */
 void ShopDispatch(void);                /* C:1590  SHOPS: the shop across the counter              */
 
 u8   ReadDungeonCell(u8 level);         /* C:1451  the dungeon cell at LookX/LookY on that level; also sets DungeonCellPtr */
