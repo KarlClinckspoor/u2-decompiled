@@ -239,3 +239,6 @@ name:                                               /* asm: CreateChar_AskName *
     ProgramEntry();                                 /* the game starts again from its entry point */
     HangForever();
 }
+
+/* asm: MapViewCol @5AB0 check: none -- a work byte of MAPVIEW (the map column being read), in the padding at the end of this
+ * module; see mapview.c. */

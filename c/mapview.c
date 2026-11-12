@@ -31,8 +31,8 @@
 
 #include "u2.h"
 
-/* asm: MapViewCol @5AB0 check: none -- the map column being read, a work byte in the code segment (in
- * the wrapping loop only); a local variable in the C. */
+/* (MapViewCol, the map column being read in the wrapping loop, is a work byte in the code segment, in the
+ * padding of CHARGEN: anchored in chargen.c. A local variable in the C.) */
 
 /* asm: UpdateMapView @5AB1 also: @5B98 @5C6D
  *

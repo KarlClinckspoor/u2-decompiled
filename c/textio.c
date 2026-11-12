@@ -452,10 +452,12 @@ u8 AbsOf(u8 x)
 
 /* asm: Random @5217
  *
- * An additive generator over a six-byte history, RandSeed (newest) to RandSeed5, a byte array
+ * An additive generator over a six-byte history, RandSeed (the newest) to RandSeed5, a byte array
  * RandSeed[6] here. The new byte is RandSeed1 + RandSeed4 + RandSeed5 + 1 (the first carry is set,
- * and the carry runs on through the adc chain), the history moves down one place and the new byte
- * is the answer. The seed is set from the BIOS tick count at the start (START). */
+ * and the carry runs on through the adc chain); it is stored in RandSeed and then the history
+ * moves down one place, RandSeed..RandSeed4 to RandSeed1..RandSeed5, so the new byte is in both
+ * RandSeed and RandSeed1 and the old RandSeed is lost. The new byte is the answer. The seed is set
+ * from the BIOS tick count at the start (START). */
 u8 Random(void)
 {
     unsigned s;
@@ -465,9 +467,9 @@ u8 Random(void)
     s = (unsigned)RandSeed[1] + RandSeed[4] + 1;
     s = (unsigned)(u8)s + RandSeed[5] + (s > 0xFF);
     v = (u8)s;
-    for (i = 4; i >= 0; i--)
-        RandSeed[i + 1] = RandSeed[i];
     RandSeed[0] = v;
+    for (i = 4; i >= 0; i--)
+        RandSeed[i + 1] = RandSeed[i];                  /* [1] = [0] = the new byte */
     return v;
 }
 

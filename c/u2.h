@@ -348,4 +348,13 @@ void FillBlock4x4(u16 x, u16 y, u16 pattern);   /* C:4BE0  */
 #define ToneDelay DelayTbl[6]           /* D:058C  the delay of a tone's duration unit: entry 6 of the speed-scaled delay table */
 void OutPort(u16 port, u8 value);       /* the CPU's out instruction (ports 42h, 43h: the timer; 61h: the speaker) */
 u8   InPort(u16 port);                  /* the CPU's in instruction                                */
+
+/* VIEW3D.ASM */
+extern u8 LineStepX, LineStepY;         /* D:047D D:047E  DrawViewLine: the steps, 1 or FFh           */
+extern u8 BlockColor;                   /* D:047F  the pattern (0-7) of a monster shape's block       */
+extern u8 LineCount, LineErr;           /* D:0480 D:0481  DrawViewLine: steps left, error term       */
+extern u8 ViewDepth;                    /* D:0482  the depth being drawn                              */
+extern u8 LineDX, LineDY;               /* D:0483 D:0484  the facing while the cells are read; |dx|, |dy| of a line */
+extern u8 WorkX, WorkY;                 /* D:0004 D:0005  scratch                                     */
+extern u8 ViewLeftCells[8], ViewAheadCells[8], ViewRightCells[8], ViewMonsters[8];   /* D:048F D:0497 D:049F D:04AF */
 #endif

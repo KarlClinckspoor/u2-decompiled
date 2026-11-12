@@ -4,16 +4,16 @@ A **reading aid**: for a routine in `../src`, "this is roughly what it does, wri
 programmer would". It is **not a port**, **not byte-matching**, and **has never been run against
 the game**. The assembly is the ground truth; where the two disagree, the C is wrong.
 
-Status: nine modules so far, every routine of each:
-`main.c` = `src/MAIN.ASM` (the main loop and the turn), `events.c` = `src/EVENTS.ASM` (what monsters do
-to the player), `cmdal.c` = `src/CMDAL.ASM` (commands A to L, the fight, the ladder code), `cmdmz.c` =
-`src/CMDMZ.ASM` (commands M to Z), `shops.c` = `src/SHOPS.ASM`, `input.c` = `src/INPUT.ASM` (number
-and money entry, the shops' prices, the monsters' step outdoors and in towns), `load.c` =
-`src/LOAD.ASM` (the map, monster and talk files; saving), `move.c` = `src/MOVE.ASM` (a step and its
-rules by transport, the direction a command asks for, the time doors) and `dungeon.c` =
-`src/DUNGEON.ASM` (the time door's walk, the command loop underground, the helm's map). Not yet:
-START, SCREEN, TEXTIO, CHARGEN, MAPVIEW, SOUND, VIEW3D, SPACE, ENDGAME (the data U2DATA is declared
-in `u2.h` as far as the nine modules use it).
+Status: **all 19 modules**, every routine and table of each, one `.c` per assembly module of the same
+name (`main.c` = `src/MAIN.ASM`, and so on; `u2.h` has the shared state and the routines of the other
+modules, `bcd.h` the BCD arithmetic). Roughly, from the top: START (`start.c`: title, menu,
+demonstration, the speed-scaled delays), MAIN (the loop and the turn), EVENTS (what monsters do to the
+player), SHOPS, INPUT (number and money entry, prices, the monsters' step), LOAD (files, saving), MOVE
+(a step and its rules, the time doors), DUNGEON (the loop underground, the helm's map), CMDAL and CMDMZ
+(the commands), SCREEN (CGA pixels and tiles), TEXTIO (text, keys, random numbers, files), CHARGEN,
+MAPVIEW (the map window), SOUND, VIEW3D (the 3D view), SPACE (space flight) and ENDGAME (Minax's end).
+The data module U2DATA is declared in `u2.h` as far as the C uses it; the assembly's tables that the
+C needs are in the `.c` of the module that owns them (the dead code and the padding are not).
 
 ## Rules
 
@@ -38,8 +38,17 @@ in `u2.h` as far as the nine modules use it).
   loops jump on to EndTurn, EndTurn jumps back to MainLoop) becomes returns: `MainLoop` calls
   `EndCommand` after each pass, which runs the monsters' turn. A jump the C turns into a return
   is listed in the anchor: `returns: EndTurn MainLoop`.
-- **What it leaves out:** the timing loops, the screen, the DOS file calls. `u2.h` declares what
-  the C files need from them.
+- **What it leaves out:** the registers, dead code and padding. The machine itself, the BIOS, DOS,
+  the ports and the CGA's memory, is not part of the game: `u2.h` declares it as stand-ins
+  (`BiosReadKey`, `BiosWriteChar`, `DosOpenFcb`, `OutPort`, `VideoByte` ...), and the C calls them
+  where the assembly executes an `int` or an `in`/`out`.
+- **Jumps that never come back** (the title, the menu and the demonstration in `start.c`; the
+  space command loop) are calls in the C, and what follows such a call is only the C unwinding.
+- **Text.** `PrintChar` treats the game's two kinds of line end (0Dh and 0Ah) as the one `'\n'`;
+  the only 0Ah in the game follow a 0Dh.
+- **Loops over the same thing:** where the assembly repeats code that a C loop does (the six
+  attributes, the crosshair's pixels), the anchor carries `unrolled:` with the number of calls the
+  loop saves, and the check demands exactly that many fewer.
 
 ## Checking
 
