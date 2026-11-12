@@ -4,7 +4,7 @@ A **reading aid**: for a routine in `../src`, "this is roughly what it does, wri
 programmer would". It is **not a port**, **not byte-matching**, and **has never been run against
 the game**. The assembly is the ground truth; where the two disagree, the C is wrong.
 
-Status: **all 19 modules**, every routine and table of each, one `.c` per assembly module of the same
+Status (and `test/`: a harness that plays the C from the title on, see test/README.md): **all 19 modules**, every routine and table of each, one `.c` per assembly module of the same
 name (`main.c` = `src/MAIN.ASM`, and so on; `u2.h` has the shared state and the routines of the other
 modules, `bcd.h` the BCD arithmetic). Roughly, from the top: START (`start.c`: title, menu,
 demonstration, the speed-scaled delays), MAIN (the loop and the turn), EVENTS (what monsters do to the

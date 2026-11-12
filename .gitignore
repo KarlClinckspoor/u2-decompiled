@@ -5,3 +5,4 @@ tools/*.zip
 __pycache__/
 *.pyc
 .claude/settings.local.json
+c/test/gen/
