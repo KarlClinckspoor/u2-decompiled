@@ -482,7 +482,8 @@ static void DrawChest(void)
  *   - an open cell: a ladder down (20h), a ladder up (10h) or, if it is no ladder up, a chest (40h);
  *     then the left and right sides: a wall (with a door if it has 40h and not 20h) or the opening;
  *     and on to the next depth, up to 6.
- * ViewDepth is left at the last depth drawn (DrawViewMonster reads it). */
+ * ViewDepth is left at the depth where the view ended: the wall's depth, or 7 after the open-cell path
+ * (one past the last depth drawn, 6). DrawViewMonster reads it. */
 static void DrawViewWalls(void)
 {
     u8 d;

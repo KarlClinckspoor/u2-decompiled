@@ -89,7 +89,7 @@ void CalcPrice(u8 item)
     steps = (u8)(item + 8);
     AmountHi = 0;   prev_hi = 0;
     AmountLo = 4;   prev_lo = 4;
-    sum = (u8)(Intelligence + Charisma);            /* binary, not BCD: see above */
+    sum = (u8)(Intelligence + Charisma + ((unsigned)item + 8 > 0xFF));   /* binary, not BCD (see above); plus the carry of item + 8 */
     bits = 0;
     do {
         bits++;
