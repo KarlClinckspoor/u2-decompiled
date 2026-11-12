@@ -182,8 +182,8 @@ MainMenu:	nop	;@0242
 	mov byte ptr CursorRow, al	;@02A2
 	mov al, 6	;@02A5
 	mov byte ptr CursorCol, al	;@02A7
-	call PrintInline	;@02AA
 ; "(C)-1983,1989 BY LORD BRITISH"
+	call PrintInline	;@02AA
 	db 28h,43h,29h,2Dh,31h,39h,38h,33h,2Ch,31h,39h,38h,39h,20h,42h,59h	;@02AD
 	db 20h,4Ch,4Fh,52h,44h,20h,42h,52h,49h,54h,49h,53h,48h,0h	;@02BD
 	mov byte ptr CursorRow, 17h	;@02CB
@@ -206,15 +206,15 @@ MainMenu:	nop	;@0242
 	mov byte ptr CursorRow, 0Fh	;@031E
 	mov al, 6	;@0323
 	mov byte ptr CursorCol, al	;@0325
-	call PrintInline	;@0328
 ; "'P' - PLAY A GAME OF ULTIMA ]["
+	call PrintInline	;@0328
 	db 27h,50h,27h,20h,2Dh,20h,50h,4Ch,41h,59h,20h,41h,20h,47h,41h,4Dh	;@032B
 	db 45h,20h,4Fh,46h,20h,55h,4Ch,54h,49h,4Dh,41h,20h,5Dh,5Bh,0h	;@033B
 	mov byte ptr CursorRow, 11h	;@034A
 	mov al, 6	;@034F
 	mov byte ptr CursorCol, al	;@0351
-	call PrintInline	;@0354
 ; "'C' - CREATE A NEW CHARACTER"
+	call PrintInline	;@0354
 	db 27h,43h,27h,20h,2Dh,20h,43h,52h,45h,41h,54h,45h,20h,41h,20h,4Eh	;@0357
 	db 45h,57h,20h,43h,48h,41h,52h,41h,43h,54h,45h,52h,0h	;@0367
 	mov byte ptr CursorRow, 13h	;@0374
@@ -261,8 +261,8 @@ DemoShow:	nop	;@03AF
 	db 0h	;@03F8
 	mov byte ptr CursorCol, 0	;@03F9
 	mov byte ptr CursorRow, 18h	;@03FE
-	call PrintInline	;@0403
 ; "ACROSS THE FACE OF THE EARTH"
+	call PrintInline	;@0403
 	db 20h,20h,20h,20h,20h,20h,41h,43h,52h,4Fh,53h,53h,20h,54h,48h,45h	;@0406
 	db 20h,46h,41h,43h,45h,20h,4Fh,46h,20h,54h,48h,45h,20h,45h,41h,52h	;@0416
 	db 54h,48h,0h	;@0426
@@ -276,8 +276,8 @@ DemoShow:	nop	;@03AF
 	db 50h,49h,43h,54h,57h,4Eh,20h,20h	; "PICTWN  " (town)	;@043D
 	mov byte ptr CursorCol, 0	;@0445
 	mov byte ptr CursorRow, 17h	;@044A
-	call PrintInline	;@044F
 ; "SEARCH FOR CLUES IN CARELESS WORDS"
+	call PrintInline	;@044F
 	db 20h,20h,20h,53h,45h,41h,52h,43h,48h,20h,46h,4Fh,52h,20h,43h,4Ch	;@0452
 	db 55h,45h,53h,20h,49h,4Eh,20h,43h,41h,52h,45h,4Ch,45h,53h,53h,20h	;@0462
 	db 57h,4Fh,52h,44h,53h,0h	;@0472
@@ -310,8 +310,8 @@ Demo_Dungeon:	call ClearBottomLines	;@0519
 	db 50h,49h,43h,44h,4Eh,47h,20h,20h	; "PICDNG  " (dungeon)	;@052A
 	mov byte ptr CursorCol, 0	;@0532
 	mov byte ptr CursorRow, 17h	;@0537
-	call PrintInline	;@053C
 ; "TRAVERSE DEEP DARK DEADLY DUNGEONS"
+	call PrintInline	;@053C
 	db 20h,20h,20h,54h,52h,41h,56h,45h,52h,53h,45h,20h,44h,45h,45h,50h	;@053F
 	db 20h,44h,41h,52h,4Bh,20h,44h,45h,41h,44h,4Ch,59h,20h,44h,55h,4Eh	;@054F
 	db 47h,45h,4Fh,4Eh,53h,0h	;@055F
@@ -331,15 +331,15 @@ Demo_Dungeon:	call ClearBottomLines	;@0519
 	db 50h,49h,43h,53h,50h,41h,20h,20h	; "PICSPA  " (space)	;@05A7
 	mov byte ptr CursorCol, 0	;@05AF
 	mov byte ptr CursorRow, 17h	;@05B4
-	call PrintInline	;@05B9
 ; "TRAVEL THROUGHOUT THE GALAXY"
+	call PrintInline	;@05B9
 	db 20h,20h,20h,20h,20h,20h,54h,52h,41h,56h,45h,4Ch,20h,54h,48h,52h	;@05BC
 	db 4Fh,55h,47h,48h,4Fh,55h,54h,20h,54h,48h,45h,20h,47h,41h,4Ch,41h	;@05CC
 	db 58h,59h,0h	;@05DC
 	mov byte ptr CursorCol, 1	;@05DF
 	mov byte ptr CursorRow, 18h	;@05E4
-	call PrintInline	;@05E9
 ; "TO THE PLANETS OF OUR SOLAR SYSTEM"
+	call PrintInline	;@05E9
 	db 20h,20h,54h,4Fh,20h,54h,48h,45h,20h,50h,4Ch,41h,4Eh,45h,54h,53h	;@05EC
 	db 20h,4Fh,46h,20h,4Fh,55h,52h,20h,53h,4Fh,4Ch,41h,52h,20h,53h,59h	;@05FC
 	db 53h,54h,45h,4Dh,0h	;@060C
@@ -353,8 +353,8 @@ Demo_Dungeon:	call ClearBottomLines	;@0519
 	db 50h,49h,43h,4Dh,49h,4Eh,20h,20h	; "PICMIN  " (Minax)	;@0625
 	mov byte ptr CursorCol, 0	;@062D
 	mov byte ptr CursorRow, 17h	;@0632
-	call PrintInline	;@0637
 ; "AND CONQUER TIME ITSELF TO BATTLE"
+	call PrintInline	;@0637
 	db 20h,20h,20h,41h,4Eh,44h,20h,43h,4Fh,4Eh,51h,55h,45h,52h,20h,54h	;@063A
 	db 49h,4Dh,45h,20h,49h,54h,53h,45h,4Ch,46h,20h,54h,4Fh,20h,42h,41h	;@064A
 	db 54h,54h,4Ch,45h,0h	;@065A

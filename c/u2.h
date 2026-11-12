@@ -16,6 +16,7 @@
 
 typedef uint8_t  u8;
 typedef uint16_t u16;
+typedef uint32_t u32;
 
 /* ---- State (src/U2DATA.ASM) --------------------------------------------------------------- */
 
@@ -124,6 +125,12 @@ extern const char *TalkBufPtr;  /* D:0476  the TLKxxx file of the current town (
 
 /* The screen. */
 extern u8 CursorCol;            /* D:002E */
+extern u8 CursorRow;            /* D:002F */
+extern u8 TextAttr;             /* D:023E  text attribute: 0Fh normal, 2 or 70h warning          */
+extern u8 GraphicsMode;         /* D:0478  0 = text screen, else the CGA map screen             */
+extern u8 RandSeed[6];          /* D:023F  the random generator's history, newest first         */
+extern u8 SoundOff;             /* D:054D  FFh = sound off (Ctrl-S)                             */
+extern u16 SpeedMin;            /* D:0554  the lowest speed setting Ctrl-Right accepts          */
 extern u8 TextRightCol;         /* D:0031  text wraps at this column                            */
 extern u8 TextLeftCol;          /* D:054F  column after a carriage return                       */
 extern u8 TileCache[256];       /* D:0272  the map window as it will be drawn                   */
@@ -177,7 +184,7 @@ void SpellMagicMissile(void);           /* C:0F12 */
 void SpellSleep(void);                  /* C:0F48 */
 void ThiefStealItem(void);              /* C:0FCD  */
 void SetDefaultSpeed(void);             /* C:06AC  */
-void CalcDelayTbl(void);                /* C:06ED  */
+void CalcDelayTbl(void);                /* C:06ED  (START) the delay table from SpeedSetting */
 void AnimateWater(void);                /* C:4AE6  scrolls the water tile's picture one row         */
 void AnimateForceField(void);           /* C:4AF1 */
 void XorPlayerMark(void);               /* C:5255  draws or erases the mark on the player's square  */
@@ -268,4 +275,50 @@ bool PayPrice(void);                    /* C:2052  takes AmountHi:AmountLo from 
 u8   Random(void);                      /* C:5217  0-FFh                                           */
 u8   SignOf(u8 x);                      /* C:50D8  0 -> 0, 1-7Fh -> 1, 80h-FFh -> FFh              */
 
+/* The BIOS and DOS services the game uses (stand-ins: the C does not implement them). */
+bool BiosKeyWaiting(void);              /* int 16h AH=1: a key is waiting                          */
+u16  BiosReadKey(void);                 /* int 16h AH=0: AH = scan code, AL = ASCII                */
+void BiosWriteChar(u8 c, u8 attr);      /* int 10h AH=9: a character at the cursor, no advance     */
+void BiosScrollUp(u8 lines, u8 top, u8 left, u8 bottom, u8 right);   /* int 10h AH=6, blank colour 0 */
+void BiosSetCursor(u8 row, u8 col);     /* int 10h AH=2, page 0                                    */
+u8   DosOpenFcb(u8 *fcb);               /* int 21h AH=0Fh: 0 = opened                              */
+void DosSetDta(void *buffer, bool onto_screen);   /* int 21h AH=1Ah (the CGA segment B800h if onto_screen) */
+void DosRandomBlock(u8 function, u8 *fcb, u16 count);   /* int 21h AH=27h read / 28h write, from record 0 */
+void DosCloseFcb(u8 *fcb);              /* int 21h AH=10h                                          */
+void XorBitmapCS(u16 x, u16 y, const u8 *bitmap);   /* C:4C1E  (SCREEN) draws a picture XOR onto the screen */
+
+/* TEXTIO.ASM */
+void PrintChar(u8 c);                   /* C:5003  */
+u8   ReadTwoDigits(void);               /* C:51B0  two digits, echoed; BCD                         */
+u8   WaitKey(void);                     /* C:53D0  */
+void ClearBottomLines(void);            /* C:538F  */
+void SetTextNormal(void);               /* C:53D9  */
+void SetTextWarning(void);              /* C:53DF  */
+
+
+/* CHARGEN.ASM, START.ASM */
+void CreateCharacter(void);             /* C:5400  character generation; never returns             */
+void ProgramEntry(void);                /* C:0100  the program restarts from its entry point        */
+
+/* ENDGAME.ASM, sound */
+extern u8  SpeakerIsOff;                /* C:6998  a byte in the code segment (VIEW3D): FFh speaker off, 0 on */
+extern u16 BleepCountdown;              /* C:6994  a word in the code segment (VIEW3D)             */
+void StartTone(u16 divisor);            /* C:5CB2  PIT channel 2 square wave, speaker on           */
+void HoldTone(u16 divisor, u16 duration);   /* C:5CD2  sets the pitch, waits duration x delay      */
+void StopTone(void);                    /* C:5CE4  */
+void SpaceSpeakerOn(u16 divisor);       /* C:7276  */
+void SpaceSpeakerOff(void);             /* C:7289  */
+void ToggleSpaceBleep(void);            /* C:7242  */
+
+/* START.ASM */
+extern u8  DemoSeen;                    /* D:0239  1 once the demonstration has been shown          */
+extern u16 DelayTbl[20];                /* D:0580  the speed-scaled delays                          */
+extern const u16 DelayFactorTbl[20];    /* D:0558                                                   */
+#define CgaMemory ((void *)0)           /* the PIC pictures are read to B800:0000 (the name starts with "PI") */
+u8   BiosTickLow(void);                 /* the low byte of the BIOS tick count (40h:6Ch)            */
+void DivideError(void);                 /* the CPU's divide error: the original never recovers      */
+void GameStart(void);                   /* C:0764  (MAIN) play; never returns                       */
+void TitleScreen(void);                 /* C:013E  */
+void MainMenu(void);                    /* C:0242  */
+void DemoShow(void);                    /* C:03AF  */
 #endif
