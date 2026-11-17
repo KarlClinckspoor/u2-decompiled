@@ -5,7 +5,8 @@ reissued by Origin in 1989 and sold by GOG) actually works: turns, character gen
 magic, money, travel through time and space, dungeons, and the end of the game. It is read from
 the byte-identical assembly in `src/*.ASM` (the ground truth) and the C reading aid in `c/*.c`,
 not from the manual, wikis or play. Where the manual or common knowledge disagree, this is what
-the program does.
+the program does. The claims that were at first only computed from the code have since been run in
+the C test harness (`c/test/`); section 16 says how, and what is still open.
 
 **Conventions**
 
@@ -26,6 +27,9 @@ the program does.
   from code plus game data) rather than read from one routine. **[data]** marks something read
   from the game's data files in `gamedata/` (maps, monster and talk files). **(FINDINGS)** means
   the point is already in `docs/FINDINGS.md`; it was re-checked against the code here.
+  **(tested)** means the claim was run in the test harness `c/test/` (the game's C, headless) and
+  the assembly of the path exercised was re-read; the key string that reproduces it is given in
+  `code` (notation and method: section 16).
 - **Map codes and tiles.** A map byte is a tile number × 4 ("map code"); movement and the map
   window work with half codes (map code / 2). Both appear below; the text says which.
 
@@ -52,7 +56,7 @@ Contents: [1 Overview](#1-overview--core-game-loop) ·
 [9 NPCs](#9-npcs--conversation) · [10 Party](#10-party) · [11 Survival](#11-survival-food-hp-healing-status-death--resurrection) ·
 [12 RNG](#12-random-number-generation) · [13 Quest](#13-quest-structure--endgame) ·
 [14 Commands](#14-commands) · [15 Bugs & quirks](#15-notable-bugs-quirks-dead-code--differences-from-the-apple-ii-original) ·
-[16 Open questions](#16-open-questions--unverified)
+[16 Testing & open questions](#16-testing-and-what-is-still-open)
 
 ---
 
@@ -68,7 +72,7 @@ Things the code does that a player would not expect:
 - **There is no healing.** Hit points never regenerate. The only way to gain them is to pay a king
   50 gold for +300 (+200, +100 at higher totals), as often as you like (9.3, 11.2).
 - **The only way to raise an attribute** is to offer gold to the hotel clerk of the 1990 A.D. towne
-  (or, because the code does not check the planet, to the matching person in the Mars towne):
+  (or, because the code does not check the planet, to the Historian of the Mars towne):
   6 times in 8, +4 × the hundreds offered, with no cap (3.2).
 - **Damage from monsters is a random bit-subset of their total, not a sum.** The hits of a turn are
   added into one byte, which is then ANDed with a random byte and `77h`. Four guards hitting in the
@@ -127,7 +131,11 @@ dungeons). In order:
    (damage) are cleared, then by `MapType`: 0 `OutdoorMonsters` (@0A6D, then `SpawnMonster`);
    1-3 `EVENTS.ASM:TownTurn` (@101C); 4-5 `EVENTS.ASM:DungeonTurnTower` (@115F).
 3. **End of turn** (`EndTurn`, surface and towns only): redraw; one attack sound per attack and a
-   flash per hit; apply the turn's damage (4.6); status lines; on the surface move the time door
+   flash per hit (`TEXTIO.ASM:XorPlayerMark` @5255 XORs `AttackMarkBmp`, a 16 × 16 white disc, over
+   the player's square at pixel (90h, 50h) for the length of the hit sound, and once more to take
+   it away: the figure shows inverted inside a disc. It is the disc `XorAttackMark` @523E puts on
+   the neighbouring square when the player hits) **(tested, 16)**; apply the turn's damage (4.6);
+   status lines; on the surface move the time door
    (7.5); then **count down** `LegsParalyzed`, `ArmsParalyzed`, `SleepTurns`, `TimeStopTurns`
    (each stops at 0).
 
@@ -197,7 +205,10 @@ hit points 400, food 400, gold 400 (`HitPointsHi = FoodHi = GoldHi = 04`). Every
 from the blank PLAYER file, i.e. zero: no weapon (hands), no armour (skin), no items, experience
 0, `Planet = 0`, `SpeedSetting = 0` (GameStart then sets the default 00FFh) and `TimeDoorTimer =
 0` **[data: GOG's PLAYER is all zeros]**. Because the door timer is decremented before it is
-tested, **the first time door appears only after 256 surface turns** (then every 8) **(inferred)**.
+tested, **the first time door appears only at the end of the 256th surface turn** (then every 8),
+and at the era's *second* spot, (48, 24), because the spot is advanced before the door is placed
+**(tested:** `{ESC}P` P×256 `{SET:PlayerX=47}{SET:PlayerY=24}{RIGHT}` goes through the door and
+ends at (47, 28) in 9 000 000 B.C.; with P×255 the same step only walks to (48, 24)**)**.
 
 ### 2.4 What each attribute does
 
@@ -263,7 +274,8 @@ Attributes are never raised by play. The only routine that writes them after cre
 **[data]** In the era-3 towne (MAPX32) the person with talk 84h is the clerk of the "Hotel
 California" at (10, 57) (TLKX32 string 4). **The code does not test `Planet`**, and `TimeZone`
 holds the planet number away from Earth, so the Mars towne (MAPG32, planet 3, map type 2)
-qualifies too; its MONG32 has talk numbers 81h-84h **(inferred; not verified in play)**.
+qualifies too **(tested, 9.2)**: its MONG32 has talk numbers 81h-84h, and there the Historian (84h,
+at (15, 47)) does the clerk's work.
 
 There is no upper limit; the only "cap" is the wrap past 99. Offering 0 gold to the clerk still
 says "ALAKAZAM!" and adds 0.
@@ -310,8 +322,16 @@ adjacent monster; monsters move, cast and hit during their turn.
    | 65 (65h = 101) | 25 | 27 | 35 | 41 | 43 |
    | 99 (99h = 153) | 38 | 40 | 48 | 54 | 56 |
 
+   **(tested)** All 25 combinations of strength 20/35/40/65/99 with weapons 0, 1, 5, 8, 9 took
+   exactly `(8w + S) >> 2` from a 255-HP townsman, e.g. `{ESC}P{GOTO:2,2,5,5}{SET:Attributes[1]=0xFF}`
+   `{SET:Attributes[0]=0x65}{SET:ReadyWeapon=9}{SET:MonsterHP[15]=255}A{RIGHT}` with `U2_MONSTERS=1`
+   leaves slot 15 at 212 (43 taken). The hit roll of step 3: 500 attacks each at agility 10h, 25h,
+   40h, 70h, 80h hit 13.0%, 32.0%, 51.0%, 85.4%, 100% (expected 12.5, 28.9, 50, 87.5, 100).
+   The sum cannot wrap in play: the largest BCD strength, 99h, with the quick sword makes 225.
+
 6. `Attack_Damage` (@2C19): `HP - damage` with SEC/SBC semantics; **the monster dies only if
-   damage > HP**. Hit down to exactly 0 it survives (and then flees, 4.5) (FINDINGS).
+   damage > HP**. Hit down to exactly 0 it survives (and then flees, 4.5) (FINDINGS; **tested**: a
+   29-point blow leaves a 29-HP victim alive at 0 and kills a 28-HP one).
 7. On a kill the map square gets back the tile the monster stood on, loot is given by kind (4.7),
    the slot is cleared, and gold and experience are added (3.1).
 
@@ -360,8 +380,10 @@ guards.
 
 Armour **never reduces damage**; it only turns blows aside. A monster blow (surface, town and
 dungeon alike) hits when `rnd < 80h` **and** `(rnd & 7) ≥ WornArmour` (`MAIN.ASM:MonsterAttack`
-@0B62, `EVENTS.ASM:DungeonMonsterAttack` @1357), so P(hit) = (8 − armour) / 16. Reflect or power
-armour is also required to survive a rocket launch (7.7).
+@0B62, `EVENTS.ASM:DungeonMonsterAttack` @1357), so P(hit) = (8 − armour) / 16 **(tested:** one
+guard's blows landed in 75 of 150 turns against skin, 98 of 320 against chain, 42 of 320 against
+power; the loss per hit stayed the same, 4.6**)**. Reflect or power armour is also required to
+survive a rocket launch (7.7).
 
 ### 4.5 Monster movement and AI (surface and towns)
 
@@ -413,7 +435,8 @@ must be town floor (70h) or grass (08); then `MoveMonsterToTarget` moves it **wi
 ### 4.6 Monster attacks and damage (surface and towns)
 
 `MAIN.ASM:MonsterAttack` (@0B4D): `Temp20` += 1 (an attack). A thief (FCh) first tries to steal
-(4.10). Then the blow (4.4); a hit adds to the turn's damage byte:
+(4.10). Then the blow (4.4); a hit adds to the turn's damage byte (this whole section is
+**tested**; the runs are listed at its end):
 
 ```
 T = (T + (MonsterHP >> 2) + 1) mod 256        ; current HP of the monster
@@ -447,11 +470,38 @@ Consequences:
 
 - **Sums wrap.** Two guards make T = 80h, which ANDed with 77h leaves 0: 1 damage. Four guards make
   100h = 0: **no damage at all**, not even the town's MapType hundreds (the whole block is
-  skipped when T = 0) **(inferred)**.
+  skipped when T = 0). Three guards make C0h, which after the mask is one guard's 40h again.
 - **Woods doubles** the running total at each hit, so earlier hits are doubled again by later ones.
+  Towns have woods too **[data]** (e.g. (5, 5) of the 1423 B.C. towne): a
+  single guard hitting there makes T = 80h, so each of his hits costs exactly 1 + the hundreds.
 - The **MapType hundreds** are what make town fights deadly: any turn in which a guard (or anything)
   lands a blow in a castle costs at least 301 hit points, against a starting 400.
 - The wizard's magic missile adds 40h to T (4.10).
+
+**The test runs.** One P)ass per turn, the attackers put beside the player with the harness
+cheats, hit points set back to 9999 before every turn; the attacks, hits and T of each turn were
+logged (method: section 16). Every loss observed is one the formulas give, and every one they give
+was observed:
+
+| where | attackers | turns | losses seen, by hits in the turn |
+|---|---|---|---|
+| 1423 B.C. surface, grass (17, 18) | one monster with each HP of the table above | 200 each | exactly the table's values (orc 1, 2, 5, 6 ... devil and wizard all eight; balron 1, 41) |
+| same, woods (20, 20) | the same | 200 each | T doubled: orc 0Ah → 1, 3; thief 12h → 1, 3, 11, 13; fighter 42h → 1, 3, 41, 43 |
+| village MAPX21, grass (2, 8) | 1 guard | 150 | 101 or 141 |
+| towne MAPX22, grass (5, 8) | 1 guard | 150 | 201 (41 times) or 241 (34) |
+| castle MAPX23, (5, 8) (a moat square; only woods count) | 1 guard | 150 | 301 or 341 |
+| towne, woods (5, 5) | 1 guard | 150 | always 201 (T = 80h) |
+| towne, grass (5, 8) | 2 or 3 guards | 150 each | 1 hit 201/241; 2 hits always 201; 3 hits 201/241 |
+| towne, grass (5, 8) | 4 guards | 300 | the same, and **4 hits (12 turns): 0** |
+
+To reproduce: `{ESC}P{GOTO:2,2,5,8}{SET:HitPointsHi=0x99}{SET:HitPointsLo=0x99}{SET:MonsterX[0]=4}`
+`{SET:MonsterY[0]=8}{SET:MonsterMood[0]=1}` then P×8 ends with H.P.=9798 (the guard's first hit
+lands on turn 8: 201). Adding `{SET:MonsterX[1]=6}{SET:MonsterY[1]=8}{SET:MonsterMood[1]=1}`
+`{SET:MonsterX[2]=5}{SET:MonsterY[2]=7}{SET:MonsterMood[2]=1}{SET:MonsterX[3]=5}{SET:MonsterY[3]=9}`
+`{SET:MonsterMood[3]=1}` makes four guards: P×20, P×21, P×22, P×23 end with H.P.=5859, 5859, 5658,
+5658; turn 21 is four misses, **turn 23 is four hits**. A surface monster is made the same way,
+e.g. `{GOTO:2,0,17,18}{SET:MonsterX[31]=16}{SET:MonsterY[31]=18}{SET:MonsterMood[31]=1}`
+`{SET:MonsterHP[31]=0x10}{SET:MonsterTile[31]=0x30}` for the orc.
 
 ### 4.7 Loot
 
@@ -687,8 +737,14 @@ The series is 8, 12, 20, 32, 52, 84, 136, 220, 356, 576, 932, 1508, 2440, 3948, 
 
 Armour n uses index 2n; weapons and spells index n. The sum `s` uses the two BCD bytes as binary:
 intelligence 20 + charisma 20 = 40h → b = 7. **b = 8 needs s ≥ 80h** (e.g. 40 + 40), which character
-creation cannot reach (the best is about 75h) **(inferred)**. Past FFh the sum wraps: 80 + 80 = 100h
-→ 0 → b = 1, the dearest prices in the game (FINDINGS). 95 + 95 = 2Ah pays what 15 + 15 pays.
+creation cannot reach **(tested, by enumeration)**: of the 1 947 792 attribute sheets
+`CHARGEN.ASM:SpendAttrPoints` (@5A66) accepts (six values of at least 10, at most 90 together), with
+every sex, race and class, none gives s above 75h or below 20h. **Every new character starts in
+class b = 6 or 7.** 75h needs a female human wizard with 50 points in Charisma and Intelligence
+together (typed 40 and 10: 50h + 25h); `{ESC}C101010401010F13WIZ{ENTER}Y{ESC}P{GOTO:2,2,51,53}T{UP}`
+is offered the horse for 0052, the b = 7 price. b = 8 comes only from the clerk (3.2). Past FFh the
+sum wraps: 80 + 80 = 100h → 0 → b = 1, the dearest prices in the game (FINDINGS). 95 + 95 = 2Ah
+pays what 15 + 15 pays.
 
 `INPUT.ASM:PayPrice` (@2052) subtracts the BCD price from the gold; if that borrows, the price is
 added back, "YOU DONT HAVE THAT MUCH!", beep, and the command ends (the turn passes).
@@ -883,16 +939,70 @@ TimeZone = era; load the surface; player at TimeDoorTbl[era][spot]
 So **spot 0 always leads to Legends** (from Legends itself to era 1), and spot k to era k or k+1.
 Only the turn count decides where the door currently is, and so where it leads. You arrive at the
 same spot number in the new era; normally no door is there (the destination map was saved without
-one) and the next door appears when the shared timer runs out **(inferred)**.
+one) and the next door appears when the shared timer runs out **(tested**, in the runs below: from
+the 1990 A.D. door at (56, 52), spot 0, to (29, 56) of Legends with 7 turns left on the timer**)**.
 
-**The castle time doors.** **[data]** The Legends castle (MAPX03) has four C0h squares in its
-"TIME ZONE" room. `StepOnFoot` treats them like any time door, but `MapType` stays 3, so the
-destination is the **castle** of the new era, chosen by the current `TimeDoorSpot` (whatever the
-surface door was doing when you entered): spot 2 → MAPX23, spot 4 → MAPX33, but spot 0 → MAPX13 and
-spot 6 → MAPX43, which do not exist; `ReadWriteFile` then prints "WRONG DISK" and waits for Escape
-and retries forever. The used door is replaced by the surface door's covered terrain and MAPX03 is
-saved that way, and the PLAYER record is saved with `MapType = 3` **(inferred; not verified in
-play)**.
+**The castle time doors (tested).** **[data]** The Legends castle (MAPX03) has four C0h squares in
+its "TIME ZONE" room, at (15, 25), (20, 25), (21, 25) and (26, 25). `StepOnFoot` treats them like
+any time door, but `EnterTimeDoor` neither changes `MapType` nor looks at which door was used: it
+loads the **castle** file of the era picked by the current `TimeDoorSpot`, i.e. by whatever the
+surface door was doing when the castle was entered (from Legends, spot k leads to era k + 1):
+
+| `TimeDoorSpot` | file | what happens |
+|---|---|---|
+| 0 | MAPX13 | no such file: "WRONG DISK"; `TEXTIO.ASM:ReadWriteFile` (@52CA) waits for Escape and tries again, for ever |
+| 2 | MAPX23 | the 1423 B.C. castle, player at (48, 24), on a shop counter of that map |
+| 4 | MAPX33 | the 1990 A.D. castle, player at (33, 23), open floor |
+| 6 | MAPX43 | no such file: "WRONG DISK", as for 0 |
+
+`{ESC}P{GOTO:0,3,15,26}{SET:TimeDoorSpot=4}{UP}` (or `=0`, `=2`, `=6`) shows each case. What else the
+code path does, each seen in those runs:
+
+- The player is put on the *surface* door coordinates of the new era, read as castle coordinates.
+- `LoadTalkFile` is not called, so the people of the new castle speak the Legends castle's lines:
+  `...{SET:TimeDoorSpot=2}{UP}{DOWN}T{LEFT}` makes Commander Decker (talk 84h of MAPX23) say Minax's
+  "A coward dies a thousand deaths ...".
+- `SaveGame` runs in the Legends castle before the jump: MAPX03 is written with the used door
+  replaced by `TimeDoorUnder` (the terrain under the last surface door; 00, water, for a character
+  who has never had one), and PLAYER with `MapType = 3` and **`SurfaceX/Y` = the door's castle
+  coordinates**. Leaving the new castle over its edge therefore puts the player at (15, 25) of the
+  new era's surface (or wherever the door stood), not at its castle:
+  `...{SET:TimeDoorSpot=2}{UP}{SET:PlayerX=31}{SET:PlayerY=63}{DOWN}` ends at 15,25, map type 0, in
+  1423 B.C.
+- After the "WRONG DISK" hang (`...{SET:TimeDoorSpot=0}{UP}{ESC}{ESC}`: the message again at every
+  Escape) a restart resumes inside the Legends castle, on the square where the door was.
+
+So the castle doors are a working way out of Legends during 16 of every 32 surface turns and a hang
+during the other 16. The player arrives in Legends through a door of spot 0, at (29, 56), with at
+most 7 turns left on it; the castle is at (32, 32). The spot at the castle gate therefore depends
+only on the number of surface turns the walk took (it changes every 8; turns inside the castle do
+not count): entered while the surface door is at its second or third place, (31, 56) or (33, 56),
+the room is safe.
+
+**Stale doors (tested).** `SaveGame` writes a surface map together with PLAYER, and the door timer
+stands still everywhere but on Earth's surface (`MoveTimeDoor` returns at once on a planet and is
+not called in towns or underground). Entering a place, quitting or a rocket trip therefore brings
+the player back to a map whose door is where `TimeDoorSpot` says. Launching from the 2112 A.D.
+surface with a door on the map, 20 turns on Mars and the flight back leave exactly that door, with
+the count-down where it was, and it moves on normally:
+`{ESC}P{GOTO:4,0,20,20}{SET:TimeDoorTimer=1}PPP{SET:PlayerTile=0x28}{SET:WornArmour=5}`
+`{SET:ItemCounts[15]=0x10}LL{SET:GoldLo=0}{SET:GoldLo=0}`, a space and P×5 (door at (50, 34) with 6
+turns left at the launch, 5 after the landing at (37, 42), then on to (52, 24); the two
+`{SET:GoldLo=0}` only delay the landing key until the rocket is over grass).
+
+The one way to leave a saved door behind is to leave Legends from inside its castle (by a castle
+time door, or in the rocket that stands there): MAPX00 was saved at E)nter with its door on it.
+On coming back through a surface door (always spot 0), the old door is still there. It works as a
+door (it leads where the current spot leads), there can be **two doors at once**, for 8 or 16
+turns, but it does not stay: when the cycle reaches its spot `MoveTimeDoor` finds the square taken
+and places nothing, and 8 turns later it removes the door there as its own, writing the terrain
+the previous spot covered. Run, with an all-zero MONX00 in the work directory (the 31 monsters of
+the Legends surface otherwise put the player to sleep):
+`{ESC}P{GOTO:0,0,32,32}{SET:TimeDoorSpot=2}{SET:TimeDoorTimer=1}PE{SET:PlayerX=15}{SET:PlayerY=26}{UP}`
+`{SET:PlayerX=31}{SET:PlayerY=63}{DOWN}{SET:TimeDoorTimer=1}P{SET:TimeDoorTimer=1}P{SET:PlayerX=55}`
+`{SET:PlayerY=52}{RIGHT}` ends at (29, 56) of Legends with the old door at (33, 56) on the map; P×7
+more and there is a second one at (31, 56); 8 turns later only (33, 56); 8 turns later only
+(35, 56).
 
 ### 7.6 Saving and persistence
 
@@ -923,9 +1033,11 @@ Then `SPACE.ASM:SpaceFlight` (@6999):
    ("LEFT", "RIGHT", "CLIMB", "DIVE"); **H** hyperwarps (1 tri-lithium, "NO FUEL!" without; three
    digits XENO, YAKO, ZABO, 0-9 each); **L** lands.
 4. After every hyperwarp (including the launch): if the fuel left has `(TriLithium & 3) = 3` (a
-   BCD low digit of 3 or 7), "SHIP OFF COURSE!" and each coordinate becomes `StarRnd() & 7`
-   (0-7). Then `FindOrbit` (@7030): (4, 4, 4) is the sun, "YOU HIT THE SUN!", hang; a planet's
-   coordinates set `Planet`; anything else is deep space (`Planet = 0Ah`), where landing is denied.
+   BCD low digit of 3 or 7, i.e. a launch or warp begun with 4 or 8 in the last digit), "SHIP OFF
+   COURSE!" and each coordinate becomes `StarRnd() & 7` (0-7): in practice **always (7, 1, 1)**,
+   deep space (tested, section 12). Then `FindOrbit` (@7030): (4, 4, 4) is the sun, "YOU HIT THE
+   SUN!", hang; a planet's coordinates set `Planet`; anything else is deep space (`Planet = 0Ah`),
+   where landing is denied.
 
 | # | planet | Xeno | Yako | Zabo |
 |---|---|---|---|---|
@@ -968,6 +1080,7 @@ A cell byte:
 | 20h | ladder down (D)escend) |
 | 10h | ladder up (K)limb); 30h is both |
 | low 3 bits | monster kind 1-7 (set at run time) |
+| 08h | **never set**. The code treats the low *four* bits as the monster field (Advance and Retreat test `& 0Fh`, kills and monster steps clear with `& F0h`), but the only values ever OR-ed in are the kinds 1-7 (`SpawnDungeonMonsters` @1521, the monster step @1284), no map file has the bit in its 16 levels and the dungeon monster files are empty **(tested: data scan of all ten files, and every store through `DungeonCellPtr`)**. It matters only on Pluto's "level 16" (8.6) |
 
 **[data]** Row 0 and column 0 are wall on every level of every file except two corners (cell
 (0, 0) of MAPG15 level 3, cell (0, 15) of MAPG44 level 15); the far side is open, and a step past x = 15
@@ -1048,9 +1161,18 @@ damage = (rnd & 77h) + ((4 × level) & 77h)     ; a binary sum, then subtracted 
 ```
 
 Bit 3 is masked out of the level term, so it runs 0, 4, 0, 4, 10h, 14h, 10h, 14h, 20h, 24h, 20h, 24h,
-30h, 34h, 30h, 34h for levels 0-15. Read as decimal the loss is about 0-77 plus 0-34 (modelled with
-`c/bcd.h`: average 38.5 on level 0, 72 on level 15); because the sum is not valid BCD, the hit points
-can be left with a non-decimal digit (FINDINGS) **(inferred)**.
+30h, 34h, 30h, 34h for levels 0-15. Read as decimal the loss is 0-77 plus 0-34: 0-77 on levels 0
+and 2 (average 38.5), 4-81 on 1 and 3, 14-91 on 5 and 7, 34-111 on 13 and 15 (average 72.5).
+Because the sum is not valid BCD, the hit points can be left with a non-decimal digit (FINDINGS).
+
+**(tested)** 220 turns each on levels 0, 1, 3, 7 and 15 with an orc beside the player: about half
+the blows landed and every loss was one of the 64 results the BCD model gives for that level,
+inside the ranges above. `{ESC}P{GOTO:2,5,5,5}{SET:DungeonLevel=15}{SET:HitPointsHi=0x99}`
+`{SET:HitPointsLo=0x99}{SET:MonsterX[31]=4}{SET:MonsterY[31]=5}{SET:MonsterHP[31]=200}`
+`{SET:MonsterTile[31]=1}{SET:MonsterUnder[31]=15}` then P×1, P×3, P×4 end with H.P.=9890, 9814, 9764
+(losses 109, 76, 50). From 5010 hit points on level 1 the results included 49FF and 492F. The
+spawn rule was checked the same way: 30 turns after `{GOTO:2,5,5,5}` all 31 slots held a monster
+with slot / 2 = level, 2 × (kind − 1) ≤ level and exactly the hit points of the formula.
 
 ### 8.5 Treasure
 
@@ -1058,6 +1180,40 @@ Chests: 6.6. Tri-lithium lies in every chest of level 15 **[data: level 15 holds
 four Earth mazes, 104 in the 1423 B.C. tower, 31 in the 1990 A.D. tower, 124 in Jupiter's tower,
 94/31/130 in the Mercury, Jupiter and Pluto dungeons]**. The subdued balron in the 1990 A.D. castle
 says as much (TLKX33 string 5).
+
+### 8.6 Pluto's dungeon and "level 16"
+
+**[data]** MAPG85 ends like a tower. Levels 1-13 have one cell with both ladders at (7, 7);
+level 14 has a down ladder at (7, 7) and an up ladder at (1, 1); level 15 has **no up ladder**,
+only a down ladder at (1, 1). That is the pair a tower has at its top (K)limb on 14, D)escend on
+15); every other dungeon ends with an up ladder on level 15 and no down ladder. Read as a dungeon
+it makes level 15, with its 130 chests of tri-lithium, a trap **(tested)**:
+
+- It is reached by D)escend from (7, 7) of level 14, and there is no ladder back.
+- The Up Ladder spell always fails there: it needs a completely empty cell on level 14 (5.2), and
+  level 14 has none (it is all secret doors). `{ESC}P{GOTO:8,5,7,7}{SET:DungeonLevel=15}`
+  `{SET:ItemCounts[1]=1}{SET:SpellCounts[3]=0x20}{SET:ReadySpell=3}C{LEFT}C{LEFT}C{LEFT}C`:
+  "-FAILED!" in all four facings, a charge gone each time. Only the cleric's Surface spell leads
+  out; anyone else dies there or restarts, back at the launch on Earth (7.6).
+- D)escend on (1, 1) works, since `CMDAL.ASM:Ladder_LevelInc` (@3381) has no bound: "TO LEVEL 10"
+  (16 printed through `daa`), `DungeonLevel = 10h`, and `ReadDungeonCell` (@1451) reads page 16 of
+  the map buffer, which is the **talk buffer** (D:2800). Level 16 is the last talk file loaded,
+  read as cells: a cell can be walked into only if its low four bits are 0 (the space and a few
+  other characters). No monsters appear (there are no slots 32-33); traps spring 16 times in 256.
+- The way back depends on byte 17 of that talk file, the cell under the player at (1, 1): K)limb
+  needs its bit 10h. After Pluto's towne (TLKG82: 'r', F2h) K leads back to level 15. After
+  Pluto's village (TLKG81: a space, A0h) it does not ("KLIMB-WHAT?"); that cell has bit 20h, so D
+  goes on to "level 17" ("TO LEVEL 11"), the first page of the MONSTERS shape buffer (D:2900),
+  whose cell (1, 1) is 17h: from there K leads back to 16 and D is refused. Of the 17 talk files
+  6 give a way back up (G41, G71, G82, X21, X33, X41). With a talk buffer that was never loaded
+  since the program started (zeros in the harness, whatever was in memory on a PC) the cell is
+  empty and neither ladder command works.
+
+The harness cheat cannot switch the file letter to G, so for these runs MAPG85 and MONG85 were
+copied into the work directory as MAPX85 and MONX85, and likewise MAP/MON/TLK G82 and G81:
+`{ESC}P{GOTO:8,5,1,1}{SET:DungeonLevel=15}D` prints "TO LEVEL 10", a following `K` "KLIMB-WHAT?";
+`{ESC}P{GOTO:8,2,5,5}{GOTO:8,5,1,1}{SET:DungeonLevel=15}DK` "TO LEVEL 15"; with `{GOTO:8,1,5,5}`
+first, `DKD` ends with "TO LEVEL 11" and `DKDDK` with "TO LEVEL 10".
 
 ---
 
@@ -1091,7 +1247,25 @@ allowed), paid at once. Unless the person has a talk number **and** `MapType = 2
 | 83h | the Flopy Fighter | **any amount, even 0**: one random weapon 1-8 (`(rnd & 7) + 1`) |
 | other | the hotel clerk (84h) | 6 in 8: attribute +4 × amount (3.2) |
 
-Less than 500 to 81h/82h: thanks, gold gone. The same table applies in the Mars towne (3.2).
+Less than 500 to 81h/82h: thanks, gold gone.
+
+**The same table applies in the Mars towne (tested).** **[data]** In MAPG32 talk 81h is Marlin
+Perkins at (51, 52), 82h Owen K. Garriott at (49, 55), 83h Hecate at (2, 1) and 84h the Historian
+at (15, 47). The harness flew there for real: `{ESC}P{SET:PlayerTile=0x28}{SET:WornArmour=5}`
+`{SET:ItemCounts[15]=0x10}{SET:GoldHi=0x90}LH623L{SET:GoldLo=0}{SET:GoldLo=0}{SET:GoldLo=0}`, a
+space, `X{SET:PlayerX=32}{SET:PlayerY=32}E` (launch, hyperwarp to 6-2-3, land, leave the rocket,
+enter the towne; the three `{SET:GoldLo=0}` only delay the landing key until the rocket is over
+grass). Continued with:
+
+| keys | result |
+|---|---|
+| `{SET:PlayerX=50}{SET:PlayerY=52}O{RIGHT}5` | "ENILNO IS YOURS!"; Z)tats lists QUICK SWORDS-01 |
+| `{SET:PlayerX=48}{SET:PlayerY=55}O{RIGHT}5` | "EARN THE RING!", 500 gold gone; with `{SET:RingEarned=1}` before it "THE RING IS YOURS!" |
+| `{SET:PlayerX=2}{SET:PlayerY=2}O{UP}0` | "HERE TAKE THIS!", GOLD still 9000; three such offers gave a mace, a light sword and a phaser |
+| `{SET:PlayerX=14}{SET:PlayerY=47}O{RIGHT}2` | "ALAKAZAM!", GOLD=8800; Z)tats shows AGILITY-23 (15 + 4 × 2) |
+
+On Earth `{ESC}P{GOTO:3,2,55,36}O{UP}0` gets a dagger from the Flopy Fighter for 0 gold. Nothing in
+`CmdOffer` reads `Planet`.
 
 ### 9.3 Kings
 
@@ -1176,11 +1350,22 @@ per PLAYER file (2.1).
 Starting with 400 food, you can walk about 2100 steps. When a subtraction borrows below zero the
 player dies (`DieOfStarvation` → `PlayerDies`). There is no hunger warning.
 
+**(tested)** `{ESC}P` and P×264 leaves FOOD=0400 (`CmdPass` @3DBC is "PASS" and `jmp EndCommand`);
+`{ESC}P` and ten spaces FOOD=0399 (399.00). The food of a step is taken before the terrain is
+judged (`StepOnFoot` @2599, ahead of its terrain tests at @25C0), so **a step the terrain refuses
+("--INVALID MOVE!") still costs its 0.19** (0.38 mounted): `{ESC}P` and six `{RIGHT}` into the water
+east of the starting square leave the player at 20,20 with FOOD=0398 (398.86). Only paralysed legs
+refuse the step before the food is taken.
+
 ### 11.2 Hit points
 
 Four BCD digits, 0000-9999. They are only lost (monsters, marsh, force fields, Minax, dungeon blows)
 and only gained from kings (9.3). **No regeneration, no healing potions, no temple, no healing
 spell.** Hit points are therefore a resource bought with gold: 50 gold per 300 HP up to 5000.
+**(tested)** The only instructions in the program that store into `HitPointsHi/Lo` are the starting
+value (CHARGEN @59ED), the king's raise (CMDMZ @42EB), the turn's damage (MAIN @0BF2-@0C17), the
+dungeon blow (EVENTS @1394/@139F), Minax's curse (EVENTS @0FC4), the marsh and the force field
+(MOVE @249E/@24A9, @2518) and death (MAIN @0C64); 264 quiet turns on the surface leave H.P.=0400.
 
 ### 11.3 Status effects
 
@@ -1230,9 +1415,23 @@ while the stars fly, so time spent in space does advance it **(inferred)**.
 **Where it is used**: hit rolls, monster blows and damage, spells and saves, spawns, loot and gold,
 chest contents, steals, the pub and the clerk, town wanderers, traps, Blink, Prayer, Minax's
 dying world. The **star field** of space flight has its own two-byte generator `StarRnd` (@6D68:
-new = s1 + 9 + s2 + carry), reset to 3Bh/67h before each phase; it also chooses the off-course
-destination, which therefore depends on how the star field evolved (how long you waited in the
-command loop) rather than on `Random` **(inferred)**.
+new = s1 + 9 + s2 + carry, period 4307), reset to 3Bh/67h before each phase; it also chooses the
+off-course destination.
+
+**The off-course destination is not random (tested).** `SPACE.ASM:Hyperwarp` (@6DFD) restarts the
+generator twice and then runs 128 + 128 + 63 frames in which every star is replaced many times from
+the restarted sequence; the star field, and with it the number of `StarRnd` calls made before the
+three coordinates are drawn, comes out the same whatever went before. Every run from a natural
+state ended at **Xeno 7, Yako 1, Zabo 1**, deep space: the launch itself
+(`{ESC}P{SET:PlayerTile=0x28}{SET:WornArmour=5}{SET:ItemCounts[15]=0x04}L`: "SHIP OFF COURSE!",
+XENO=07 YAKO=01 ZABO=01), launches with 8 or 14 units or after other turns, and H)yperwarps begun
+with 5 units after waits of 0 to 450 key polls, after arrow keys, with pauses between the digits
+and to different targets (`...{SET:ItemCounts[15]=0x05}LH999`). A separate model of `MoveStars`
+(@6B3D) and `StarRnd` written from the assembly gives (7, 1, 1) for the launch as well. Only a star
+field scrambled by hand (all 64 stars set to random places just before the H) can end elsewhere:
+(1, 3, 5) in 3 of 12 harness runs; in 2000 runs of the model 73% (7, 1, 1), 12% (1, 3, 5) and seven
+rarer triples, none of them a planet or the sun. So going off course costs one unit of fuel and a
+second warp, and nothing else.
 
 ---
 
@@ -1298,7 +1497,7 @@ The table `CmdJumpTbl` (@0730). Every command costs one turn (1.3). "Underground
 | A | Attack | `CmdAttack` @2B8F | 4.1; underground the cell in front (4.8); refused with paralysed arms (surface) |
 | B | Board | `CmdBoard` @2F6F | 7.4; on foot, not underground ("THINK AGAIN") |
 | C | Cast | `CmdCast` @310B | 5.1-5.3; works only underground; a charge is used even on failure |
-| D | Descend | `CmdDescend` @334D | underground on a 20h cell: dungeon level + 1, tower floor − 1 (below 0: out). **No upper bound in a dungeon** (15) |
+| D | Descend | `CmdDescend` @334D | underground on a 20h cell: dungeon level + 1, tower floor − 1 (below 0: out). **No upper bound in a dungeon** (8.6) |
 | E | Enter | `CmdEnter` @3389 | 7.2; also reads signs |
 | F | Fire | `CmdFire` @35C1 | 4.3; frigate only |
 | G | Get | `CmdGet` @363B | 6.6 |
@@ -1360,16 +1559,20 @@ From `docs/FINDINGS.md`, each re-checked against the routine named:
 - **Wear's "NOT OWNED!"** has no beep; Magic does not check ownership. (FINDINGS)
 - **Escape during a title wait** leaves a word on the stack (`WaitForEscape` @0696). (FINDINGS)
 
-Found while writing this document (by reading; none checked in play):
+Found while writing this document by reading. Those marked **(tested)** were afterwards confirmed
+in the harness (section 16); the others have not been run:
 
 - **Offer's specials are not limited to Earth**: `TimeZone = 3` and `MapType = 2` also match the
-  Mars towne (3.2, 9.2).
+  Mars towne (3.2, 9.2). **(tested)**
 - **Offer to talk 83h with 0 gold** still gives a random weapon, including the phaser 1 time in 8.
+  **(tested)**
 - **Damage sums wrap and are masked** (4.6): four simultaneous guard hits do nothing, two do 1 HP
-  plus the town's hundreds; wounded monsters can hit harder than healthy ones.
-- **Woods doubles monster damage** at every hit (the 6502's "CPX #6" on the tile underfoot).
-- **P passes for free** while the space bar costs 0.10 food; the frigate and the flying plane eat
-  nothing; the whole plane flight takes no turns.
+  plus the town's hundreds; wounded monsters can hit harder than healthy ones. **(tested)**
+- **Woods doubles monster damage** at every hit (the 6502's "CPX #6" on the tile underfoot), in
+  towns as well. **(tested)**
+- **P passes for free** while the space bar costs 0.10 food **(tested)**; the frigate and the flying
+  plane eat nothing; the whole plane flight takes no turns.
+- **A step refused by the terrain still costs its food** (11.1). **(tested)**
 - **Negate Time** does not stop attacks, spells, wanderers or dungeon monsters (5.4).
 - **Paralysis and time stop do not count down underground** (1.2).
 - **Signs read "2112 A.D."** on any planet (7.2).
@@ -1378,11 +1581,18 @@ Found while writing this document (by reading; none checked in play):
 - **Level 0 of a dungeon has one monster slot**, the others two (8.4).
 - **The thief can steal the ring**, though no thief ever drops one (4.10, 4.7).
 - **Descend has no upper bound in a dungeon.** **[data]** Pluto's dungeon (MAPG85) has a down ladder
-  on level 15 at (1, 1) (and no up ladder on that level; its level 14 has the up ladder at (1, 1),
-  as if the pair were swapped). D)escend there makes `DungeonLevel = 16`, and `ReadDungeonCell`
-  reads page 16 of the map buffer, which is the talk buffer that follows it in memory **(inferred)**.
-- **Legends castle time doors** can lead to castles that do not exist (7.5) **(inferred)**.
-- **The first surface time door** of a new character appears after 256 turns (2.3) **(inferred)**.
+  on level 15 at (1, 1) and no up ladder there. D)escend makes `DungeonLevel = 16` and the talk
+  buffer is read as the level; whether K)limb leads back depends on the last talk file loaded
+  (8.6). **(tested)**
+- **Level 15 of Pluto's dungeon cannot be left upwards** except by the cleric's Surface spell: no
+  up ladder, and Up Ladder always fails under a level without an empty cell (8.6). **(tested)**
+- **Legends castle time doors** lead to the castle of another era, or hang on a castle file that
+  does not exist; they keep the Legends talk file and overwrite the surface position (7.5).
+  **(tested)**
+- **A surface time door can be left behind** on the Legends map and stand beside the current one
+  for up to 16 turns (7.5). **(tested)**
+- **The first surface time door** of a new character appears after 256 turns (2.3). **(tested)**
+- **"SHIP OFF COURSE!" always leads to the same place**, (7, 1, 1) (12). **(tested)**
 - **Towns and dungeons reset** on every visit, so chests and pick-ups refill (7.6) **(inferred)**.
 - **Steal's stale slot** can exceed 31 and write past the mood table (9.4) **(inferred)**.
 - **`Wands + Staffs`** is a binary sum that is zero at 100h (5.1).
@@ -1393,7 +1603,10 @@ Found while writing this document (by reading; none checked in play):
 
 - Disk-swap prompts ("(INSERT PLAYER DISK)" at 0776, CHARGEN 5414/5A1E, SPACE 71CF/7207) were cut by
   turning `call PrintInline` into `jmp short` over the text; three-byte calls became NOPs (71F6,
-  7230, and the five NOPs in `ReadDirection` @2378).
+  7230, and the five NOPs in `ReadDirection` @2378). `SPACE.ASM:SetMapFileLetter` (@720B) is
+  written into the middle of one of those dead prompts, so the X/G letter of the file names is
+  itself part of the patch: before it the planets' files must have had the Earth files' names on
+  another disk **(inferred)**.
 - Unreached: a castle picture loader for `PICCAS` (04A8, file absent), the 1983 timer calibration
   (06B3; `SetDefaultSpeed` @06AC now just stores 00FFh), a developer screen dump to `PICXXX` inside
   `CmdCast` (3117-3152), a second sign routine (50E4), an old tone routine (5CED/5F0D) and others.
@@ -1416,26 +1629,104 @@ The repository has no Apple II code, so only what the PC code itself shows can b
 
 ---
 
-## 16. Open questions / unverified
+## 16. Testing, and what is still open
 
-1. **Legends castle time doors** (7.5): do they really send the player to the 1423 B.C./1990 A.D.
-   castles, and hang with "WRONG DISK" for spots 0 and 6? Not tried in play; the original intent is
-   unclear (perhaps they were meant to be used only from a particular door spot).
-2. **Pluto's dungeon, level 15**: what a descent to "level 16" (the talk buffer read as cells) looks
-   like and whether the player can get back; and whether the swapped ladder pair is a data error.
-3. **Damage tables in 4.6 and 8.4** are computed from the code and a BCD model, not observed: monster
-   and player hit points are never shown, so the four-guard "no damage" case would be the easiest to
-   confirm in play.
-4. **Offer and the Mars towne**: confirmed in code and data, not in play.
-5. **Off-course destinations**: whether `StarRnd`'s state at the end of a hyperwarp is effectively
-   random or reproducible for a given wait.
-6. **`XorPlayerMark`** (5255): exactly what it draws at a hit (cosmetic; FINDINGS).
-7. **Bit 3 of a dungeon cell** blocks Advance but is never set by data or code; leftover or
-   reserved?
-8. **The 1983 Sierra PC release**: which of the above (and of FINDINGS' list) Origin's 1989 patch
-   changed; the dead code suggests the 1989 EXE is a binary-patched 1983 build.
-9. **Starting price class**: the claim that character creation cannot reach the best price class
-   (b = 8) assumes the bonus rules in 2.2; not exhaustively enumerated.
-10. **Stale time doors** after a rocket trip: a map saved at launch keeps its door; if the spot has
-    moved on by the time you return to that era by time door, that door is never removed
-    **(inferred)**, giving two doors. Not tested.
+### 16.1 How the tests were run
+
+The claims this document first drew only from reading were run in the harness of `c/test/` (its
+README describes it). `python3 c/test/run.py` builds it and makes the standard character: 15 in all
+six attributes, male human fighter (Strength 35, Agility 15, Intelligence 20), 400 hit points, food
+and gold, at (20, 20) in 1423 B.C. A test is `harness gamedata WORKDIR "KEYS"` with that character's
+PLAYER file copied into a fresh work directory. In the key strings quoted in this document `P×n`
+stands for n times `P` and "a space" for the space bar; `{SET:...}` and `{GOTO:...}` are the
+harness's cheats; a leading `...` stands for the start of the string given just before it. The
+results quoted are the text screen and the "player at x,y, map type n" line the harness prints at
+the end. The harness's BIOS tick is fixed, so `Random` starts the same way every time: each string
+gives the same result on every run.
+
+What the method can and cannot show:
+
+- The harness runs the C, not ULTIMAII.EXE. For every path exercised the assembly was re-read
+  against the C: `MonsterAttack`/`EndTurn`, `DungeonMonsterAttack`, the spawn rule of
+  `SpawnDungeonMonsters`, `CmdAttack`/`Attack_Damage`, `CmdOffer`, `MoveTimeDoor`, `EnterTimeDoor`,
+  `LoadMapAndMonsters`, `SaveGame`, `LeaveToSurface`, `ReadWriteFile`, `CmdDescend` and the ladder
+  code, the ladder spells, `ReadDungeonCell`, `StepOnFoot`, `CmdPass`, `SpendAttrPoints`,
+  `ReadTwoDigits`, `CalcPrice`, `StarRnd`, `Hyperwarp`, `XorPlayerMark`. **No difference between the
+  C and the assembly was found.** (`MoveStars` was not compared line by line; a second model written
+  from the assembly gives the harness's result, section 12.)
+- What the screen does not show (a turn's attacks, hits and damage byte, map squares, the door
+  variables, hit points turn by turn) was read with a scratch copy of `harness.c`, not in the
+  repository, that adds a `{DUMP:...}` token and logs `Random`, `PlayAttackSound` and
+  `PlayHurtSound` through the linker's `--wrap`; the game's C was compiled unchanged. The counts
+  and loss sets of 4.1, 4.4, 4.6 and 8.4 come from those logs; the key strings quoted give the
+  stated end states with the repository's harness.
+- `XorPlayerMark` (1.2): besides the reading of @5255 and its bitmap, the 16 × 16 pixels of the
+  player's square were dumped at the hit sound: the disc, with the player's figure dark inside it.
+- `{GOTO}` cannot select the planets' files (letter G). Mars was reached by an actual flight (9.2);
+  for Pluto's dungeon the files were copied under X names (8.6).
+- There is no DOS underneath: "WRONG DISK" (7.5) is the harness reporting a missing file, which is
+  what the FCB open of a missing file returns under DOS. Real-time behaviour (delays, the idle
+  time-outs) is not modelled.
+
+### 16.2 The former open questions
+
+| # | question | result | where |
+|---|---|---|---|
+| 1 | Legends castle time doors: where they lead, and the "WRONG DISK" loop | **settled**: the 1423 B.C. or 1990 A.D. castle for `TimeDoorSpot` 2 or 4, an endless "WRONG DISK" for 0 or 6 | 7.5 |
+| 2 | Pluto's dungeon, the ladder down from level 15 | **settled**: level 16 is the talk buffer; the way back depends on the last talk file; level 15 itself has no way up | 8.6 |
+| 3 | The damage tables | **settled**: every table value and formula observed, including the four-guard wrap and the MapType hundreds | 4.1, 4.4, 4.6, 8.4 |
+| 4 | Offer in the Mars towne; 0 gold to talk 83h | **settled**: all four specials work on Mars; a weapon for 0 gold | 3.2, 9.2 |
+| 5 | Is the off-course destination random? | **settled**: no, it is (7, 1, 1) every time | 12, 7.7 |
+| 6 | What `XorPlayerMark` draws | **settled**: a white disc XOR-ed over the player's square | 1.2 |
+| 7 | Bit 3 of a dungeon cell | **settled**: nothing sets it; it is the unused top bit of a 4-bit monster field | 8.1 |
+| 8 | What the 1989 patch changed | **still open** | 16.3 |
+| 9 | Can character creation reach the best price class? | **settled**: no (exhaustive enumeration) | 6.3 |
+| 10 | Stale time doors after a rocket trip | **corrected**: a rocket trip leaves none; the Legends castle exits do, and that door is removed again | 7.5 |
+
+Also checked on the way: no hit point regeneration (11.2), P)ass free and the space bar 0.10 food
+(11.1), the first time door after 256 surface turns (2.3), the dungeon monsters' hit point formula
+(8.4), the weapon damage table and the hit chance (4.1), the armour's hit chances (4.4).
+
+### 16.3 Still open
+
+1. **The 1983 Sierra PC release**: what Origin's 1989 patch changed. The repository holds only the
+   1989 program. What it shows of the patch is in 15.2 and FINDINGS: disk prompts jumped over, calls
+   turned into NOPs, the timer calibration cut off, the file-letter routine written into a dead
+   prompt, and the remains of a loader envelope. All of these are disk handling and timing; none
+   of the routines tested here carries such a trace. But a patched constant or a changed
+   instruction leaves no trace, so whether any rule of play differs from 1983 cannot be told
+   without a 1983 disk image.
+2. **Intent.** Whether the castle time doors were meant to work as they do (7.5), and whether the
+   top of MAPG85 is a tower layout used by mistake (8.6), are questions about the authors; the
+   code and data only show what happens.
+3. **Level 16 with a talk buffer that was never loaded** (8.6): zeros in the harness; on a PC it is
+   whatever DOS left in memory after the program's data.
+4. **Not run.** Conclusions still marked **(inferred)** that no test above covers stand as read
+   from the code: among them the timers that do not count down underground (1.2), Negate Time's
+   limits (5.4), the Magic Missile wrap from level 71 (5.3), Steal's stale slot (9.4), the plane
+   flight as one command (7.4), and death and restart (11.4).
+
+### 16.4 Corrections from testing
+
+Where a test contradicted or sharpened what this document said before:
+
+- **Stale time doors** (was 16, item 10): a map saved at a rocket launch does not end up with two
+  doors. The launch saves map and PLAYER together and the door timer does not run off Earth, so
+  the door is consistent on return. A door is left behind only on the Legends surface, by leaving
+  through the castle, and it is not permanent: `MoveTimeDoor` adopts and removes it when the cycle
+  comes round (7.5).
+- **Off-course destination** (was 12, 7.7): it does not depend on how long one waited; it is always
+  (7, 1, 1).
+- **First time door** (2.3): it appears at the end of the 256th turn at the era's *second* spot,
+  not the first.
+- **Castle time doors** (7.5): besides `MapType = 3`, the PLAYER record is saved with the door's
+  castle coordinates as the surface position, so the new castle is left at the wrong place on the
+  surface; and the talk file stays that of the Legends castle. Neither was in the earlier text.
+- **Pluto's dungeon** (15.1, now 8.6): the ladders of levels 14-15 are not "swapped" but a tower's
+  top; the point missed before is that level 15 has no way up at all, by ladder or by Up Ladder.
+- **Food** (11.1): a step refused by the terrain still costs its food.
+- **Dungeon blows** (8.4): the average loss on level 15 is 72.5, not 72; the ranges per level are
+  now given exactly.
+- **Price class** (6.3): the best sum at creation is exactly 75h (it read "about 75h"), and no
+  character starts outside classes 6 and 7.
+- **Woods** (4.6): the doubling also applies on the woods squares inside towns.
