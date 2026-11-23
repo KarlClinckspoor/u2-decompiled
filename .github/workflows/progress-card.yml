@@ -1,0 +1,40 @@
+# Regenerates the progress card (docs/progress.svg, docs/progress.json) with tools/progress.py
+# on every push to the default branch, and commits it when it changed. The script reads only the
+# repository. A push made with GITHUB_TOKEN does not start another workflow run, so this does
+# not loop.
+name: progress card
+
+on:
+  push:
+    branches: [master]
+    paths-ignore: ['docs/progress.svg', 'docs/progress.json']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: progress-card
+  cancel-in-progress: false
+
+jobs:
+  card:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python3 tools/progress.py
+      - name: Commit the card if it changed
+        run: |
+          git add docs/progress.svg docs/progress.json
+          if git diff --cached --quiet; then
+            echo "card unchanged"
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'progress card: regenerate (tools/progress.py)'
+          git pull --rebase origin "$GITHUB_REF_NAME"
+          git push origin HEAD:"$GITHUB_REF_NAME"
