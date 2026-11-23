@@ -29,13 +29,14 @@ import ccheck, syms  # noqa: E402
 NAME = 'u2-decompiled'
 UNIT = 'routines'
 CAPTION = 'Function map: 1 routine per tile, in link order (src/u2.lnk), then by address'
-COLORS = dict(matched='#2a8c3c', attempt='#b8860b', open='#64748b', aside='#b94a53')
-LABELS = dict(matched='Matched', attempt='Attempt', open='Open', aside='Aside')
+COLORS = dict(matched='#2a8c3c', attempt='#b8860b', open='#64748b', aside='#3b5b8a')
+HEADLINE = 'routines with a C reading'
+LABELS = dict(matched='C reading', attempt='Attempt', open='Open', aside='Aside')
 
 
 def read(path):
     with open(path, encoding='utf-8', newline='') as f:
-        return f.read()
+        return f.read().replace('\r\n', '\n')
 
 
 def anchored():
@@ -96,12 +97,12 @@ def svg(flat):
     a = out.append
     a('<svg xmlns="http://www.w3.org/2000/svg" width="%d" height="%d" viewBox="0 0 %d %d" '
       'font-family="Roboto, Helvetica, Arial, sans-serif" role="img" aria-label="%s">'
-      % (W, H, W, H, escape('Decompilation progress: %d of %d %s matched' % (s['matched'], s['total'], UNIT))))
+      % (W, H, W, H, escape('Decompilation progress: %d of %d %s' % (s['matched'], s['total'], HEADLINE))))
     a('<rect width="%d" height="%d" rx="14" fill="#0f172a"/>' % (W, H))
     a('<text x="%d" y="38" font-size="21" fill="#ffffff">Decompilation progress</text>' % PAD)
     a('<text x="%d" y="38" font-size="15" fill="#ffffff" text-anchor="end">%s</text>' % (W - PAD, escape(NAME)))
-    a('<text x="%d" y="62" font-size="15" fill="#e5e7eb">%s / %s %s matched (%.1f%%)</text>'
-      % (PAD, format(s['matched'], ','), format(s['total'], ','), UNIT, s['percent']))
+    a('<text x="%d" y="62" font-size="15" fill="#e5e7eb">%s / %s %s (%.1f%%)</text>'
+      % (PAD, format(s['matched'], ','), format(s['total'], ','), HEADLINE, s['percent']))
     a('<rect x="%d" y="74" width="%d" height="18" rx="5" fill="#334155"/>' % (PAD, inner))
     if s['total']:
         a('<rect x="%d" y="74" width="%.2f" height="18" rx="5" fill="%s"/>'
