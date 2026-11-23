@@ -1,0 +1,154 @@
+{
+ "START.ASM": {
+  "matched": 10,
+  "attempt": 0,
+  "open": 0,
+  "aside": 0,
+  "total": 10,
+  "percent": 100.0
+ },
+ "MAIN.ASM": {
+  "matched": 9,
+  "attempt": 0,
+  "open": 0,
+  "aside": 0,
+  "total": 9,
+  "percent": 100.0
+ },
+ "EVENTS.ASM": {
+  "matched": 15,
+  "attempt": 0,
+  "open": 0,
+  "aside": 0,
+  "total": 15,
+  "percent": 100.0
+ },
+ "SHOPS.ASM": {
+  "matched": 11,
+  "attempt": 0,
+  "open": 0,
+  "aside": 0,
+  "total": 11,
+  "percent": 100.0
+ },
+ "INPUT.ASM": {
+  "matched": 8,
+  "attempt": 0,
+  "open": 0,
+  "aside": 0,
+  "total": 8,
+  "percent": 100.0
+ },
+ "LOAD.ASM": {
+  "matched": 3,
+  "attempt": 0,
+  "open": 0,
+  "aside": 0,
+  "total": 3,
+  "percent": 100.0
+ },
+ "MOVE.ASM": {
+  "matched": 7,
+  "attempt": 0,
+  "open": 0,
+  "aside": 0,
+  "total": 7,
+  "percent": 100.0
+ },
+ "DUNGEON.ASM": {
+  "matched": 7,
+  "attempt": 0,
+  "open": 0,
+  "aside": 0,
+  "total": 7,
+  "percent": 100.0
+ },
+ "CMDAL.ASM": {
+  "matched": 18,
+  "attempt": 0,
+  "open": 0,
+  "aside": 0,
+  "total": 18,
+  "percent": 100.0
+ },
+ "CMDMZ.ASM": {
+  "matched": 14,
+  "attempt": 0,
+  "open": 0,
+  "aside": 0,
+  "total": 14,
+  "percent": 100.0
+ },
+ "SCREEN.ASM": {
+  "matched": 15,
+  "attempt": 0,
+  "open": 0,
+  "aside": 0,
+  "total": 15,
+  "percent": 100.0
+ },
+ "TEXTIO.ASM": {
+  "matched": 26,
+  "attempt": 0,
+  "open": 0,
+  "aside": 0,
+  "total": 26,
+  "percent": 100.0
+ },
+ "CHARGEN.ASM": {
+  "matched": 3,
+  "attempt": 0,
+  "open": 0,
+  "aside": 0,
+  "total": 3,
+  "percent": 100.0
+ },
+ "MAPVIEW.ASM": {
+  "matched": 1,
+  "attempt": 0,
+  "open": 0,
+  "aside": 0,
+  "total": 1,
+  "percent": 100.0
+ },
+ "SOUND.ASM": {
+  "matched": 15,
+  "attempt": 0,
+  "open": 0,
+  "aside": 0,
+  "total": 15,
+  "percent": 100.0
+ },
+ "VIEW3D.ASM": {
+  "matched": 22,
+  "attempt": 0,
+  "open": 0,
+  "aside": 0,
+  "total": 22,
+  "percent": 100.0
+ },
+ "SPACE.ASM": {
+  "matched": 15,
+  "attempt": 0,
+  "open": 0,
+  "aside": 0,
+  "total": 15,
+  "percent": 100.0
+ },
+ "ENDGAME.ASM": {
+  "matched": 4,
+  "attempt": 0,
+  "open": 0,
+  "aside": 0,
+  "total": 4,
+  "percent": 100.0
+ },
+ "all": {
+  "matched": 203,
+  "attempt": 0,
+  "open": 0,
+  "aside": 0,
+  "total": 203,
+  "percent": 100.0
+ }
+}
